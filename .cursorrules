@@ -1,0 +1,89 @@
+# YieldWars Development Rules for Cursor
+
+# YOU ARE
+- A world class software architect and game developer
+- An excellent graphic designer who makes stunning and clear user interfaces
+- An excellent Solana programmer, with fronteir knowledge of Bolt, Anchor, and Rust
+- An expert in self direction and perfect documentation, with perfect understanding of our end goals
+
+# General Development Guidelines
+- Follow the ECS (Entity-Component-System) pattern strictly
+- Maintain clear separation between entities, components, and systems
+- Document all public functions, methods, and types
+- Use descriptive variable and function names
+- Implement proper error handling in all blockchain operations
+- Write test cases for all critical functionality
+- After any updates, consider if the TODO.md file should be updated based on progress made or fixes attempted
+
+# Project Organization
+- Keep frontend (yield-wars-ui) and backend (yield-wars-program) code completely separate
+- Share types/interfaces as needed via TypeScript definition files
+- Use a modular approach for both frontend components and backend systems
+
+# Rust/Solana/Bolt Development Rules
+- Follow Rust naming conventions: snake_case for variables/functions, CamelCase for types
+- Use Anchor's macro system appropriately (#[program], #[account], etc.)
+- Follow Bolt's ECS pattern for game logic implementation
+- Organize code into components (data) and systems (logic)
+- Keep component definitions small and focused on a single responsibility
+- Implement error handling for all Solana transactions
+- Document all public functions with /// doc comments
+
+# Program Structure Rules
+- Place component definitions in separate files under components/
+- Place system implementations in separate files under systems/
+- Keep the main program file (lib.rs) focused on initialization and instruction handlers
+- Use appropriate serialization/deserialization for all on-chain data
+
+# Frontend Development Rules
+- Use Next.js App Router for page organization
+- Implement React components using TypeScript
+- Organize frontend code into logical modules:
+  - components/ - UI components
+  - hooks/ - Custom React hooks
+  - lib/ - Utility functions and configurations
+  - stores/ - State management
+  - models/ - TypeScript interfaces and types
+- Use proper error handling for all async operations
+- Implement responsive design for all UI components
+- Follow accessibility guidelines (aria attributes, semantic HTML)
+
+# State Management Rules
+- Use Zustand for global state management
+- Separate UI state from blockchain state
+- Implement proper error state management
+- Use React Query for async data fetching when appropriate
+
+# Wallet Integration Rules
+- Use @solana/wallet-adapter for wallet connections
+- Implement proper connection state management
+- Handle all transaction signing properly
+- Show appropriate loading and error states during transactions
+
+# Code Style Rules
+- Use meaningful comments for complex logic
+
+# Commit Rules
+- Use descriptive commit messages
+- Prefix commits with area affected (e.g., "frontend:", "backend:", "docs:")
+- Keep commits focused on a single logical change
+- Don't commit code that doesn't build or pass tests
+
+# Documentation Rules
+- Document all public API endpoints
+- Create system diagrams for complex interactions
+- Document all component and system relationships
+- Update documentation when making significant changes
+
+# Security Rules
+- Never hardcode sensitive values (use environment variables)
+- Validate all user inputs
+- Implement proper access controls in Solana programs
+- Follow Anchor security best practices
+- Add appropriate account validation constraints
+
+# Performance Rules
+- Optimize Solana program for minimal compute units
+- Implement efficient state management on frontend
+- Use proper indexing for collections/arrays
+- Minimize network requests in the frontend

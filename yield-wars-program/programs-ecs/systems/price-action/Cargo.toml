@@ -1,0 +1,26 @@
+[package]
+name = "price-action"
+version = "0.2.2"
+description = "Created with Bolt"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "price_action"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["bolt-lang/idl-build"]
+anchor-debug = ["bolt-lang/anchor-debug"]
+custom-heap = []
+custom-panic = []
+
+
+[dependencies]
+bolt-lang.workspace = true
+price = { version = "0.2.2", path = "../../components/price", features = ["cpi"] }
+serde = { version = "1.0", features = ["derive"] }
