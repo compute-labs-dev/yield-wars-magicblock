@@ -9,7 +9,7 @@ import { PublicKey } from '@solana/web3.js';
 // Known Bolt discriminators from components (partial values)
 // These are pre-populated with common patterns but will be enhanced dynamically
 // as we encounter components in the wild
-let COMPONENT_DISCRIMINATORS: Record<string, string> = {
+const COMPONENT_DISCRIMINATORS: Record<string, string> = {
   // These are example values - they'll be updated when actual components are discovered
   // We'll keep a running map of discriminators we discover
 };
@@ -52,27 +52,26 @@ export function getComponentTypeFromProgramId(programId: string): string {
   return 'Unknown';
 }
 
-// Field types definitions
-interface WalletFields {
-  usdcBalance: bigint;
-  btcBalance: bigint;
-  ethBalance: bigint;
-  solBalance: bigint;
-  aifiBalance: bigint;
+interface DecodedData {
+  size: number;
+  discriminator: string;
+  usdcBalance?: bigint;
+  btcBalance?: bigint;
+  ethBalance?: bigint;
+  solBalance?: bigint;
+  aifiBalance?: bigint;
+  currentPrice?: bigint;
+  productionRate?: bigint;
+  lastCollectedTimestamp?: bigint;
 }
 
-interface OwnershipFields {
-  ownerType: number;
-  // Add other ownership fields
-}
-
-interface PriceFields {
-  currentPrice: bigint;
-  // Add other price fields
+export interface DecodedComponent {
+  type: string;
+  data: DecodedData;
 }
 
 // Main decoder function
-export function decodeBoltComponent(data: Buffer, programId?: string): { type: string; data: any } | null {
+export function decodeBoltComponent(data: Buffer, programId?: string): DecodedComponent | null {
   try {
     // Get discriminator (first 8 bytes)
     const discriminator = data.slice(0, 8);
@@ -100,7 +99,7 @@ export function decodeBoltComponent(data: Buffer, programId?: string): { type: s
     }
     
     // Decode based on component type
-    let decodedData: any = { 
+    let decodedData: DecodedData = { 
       size: data.length,
       discriminator: discriminatorHex,
     };
@@ -125,7 +124,6 @@ export function decodeBoltComponent(data: Buffer, programId?: string): { type: s
         decodedData = {
           ...decodedData,
           currentPrice: data.readBigUInt64LE(8),
-          // Add other fields based on your Price component structure
         };
       } catch (e) {
         console.log('Error decoding Price component:', e);
@@ -135,7 +133,6 @@ export function decodeBoltComponent(data: Buffer, programId?: string): { type: s
       try {
         decodedData = {
           ...decodedData,
-          // Add fields based on your Production component structure
           productionRate: data.readBigUInt64LE(8),
           lastCollectedTimestamp: data.readBigInt64LE(16),
         };
@@ -169,7 +166,7 @@ export function getEntityId(publicKey: PublicKey): string {
   try {
     // This is a placeholder - implement based on your actual entity ID extraction logic
     return publicKey.toBase58().slice(0, 8);
-  } catch (error) {
+  } catch {
     return 'unknown';
   }
 } 

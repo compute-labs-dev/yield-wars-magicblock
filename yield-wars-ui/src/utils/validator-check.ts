@@ -1,5 +1,18 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 
+interface EndpointResult {
+  connected: boolean;
+  details?: {
+    version?: string;
+    slot?: number;
+  };
+  error?: string;
+}
+
+interface ValidatorResults {
+  [endpoint: string]: EndpointResult;
+}
+
 /**
  * Tests connectivity to a Solana validator and returns basic details
  * 
@@ -30,11 +43,12 @@ export async function checkValidatorConnection(endpoint: string): Promise<{
       slot,
       recentBlockhash: blockhash,
     };
-  } catch (err: any) {
-    console.error('Failed to connect to validator:', err);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Failed to connect to validator:', error);
     return {
       connected: false,
-      error: err.message
+      error: error.message
     };
   }
 }
@@ -73,12 +87,13 @@ export async function checkBoltWorld(endpoint: string): Promise<{
       registryOwner: registryInfo ? registryInfo.owner.toString() : undefined,
       registrySize: registryInfo ? registryInfo.data.length : undefined
     };
-  } catch (err: any) {
-    console.error('Failed to check Bolt World:', err);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Failed to check Bolt World:', error);
     return {
       worldExists: false,
       registryExists: false,
-      error: err.message
+      error: error.message
     };
   }
 }
@@ -108,11 +123,12 @@ export async function listProgramAccounts(endpoint: string, programId: string): 
       accounts: accounts.map(a => a.pubkey.toString()),
       count: accounts.length
     };
-  } catch (err: any) {
-    console.error(`Failed to list accounts for program ${programId}:`, err);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error(`Failed to list accounts for program ${programId}:`, error);
     return {
       success: false,
-      error: err.message
+      error: error.message
     };
   }
 }
@@ -122,20 +138,14 @@ export async function listProgramAccounts(endpoint: string, programId: string): 
  * 
  * @returns Results for each endpoint tried
  */
-export async function tryMultipleEndpoints(): Promise<{
-  [endpoint: string]: {
-    connected: boolean;
-    details?: any;
-    error?: string;
-  }
-}> {
+export async function tryMultipleEndpoints(): Promise<ValidatorResults> {
   const endpoints = [
     'http://localhost:8899',  // Common local endpoint - shown to work
     'http://127.0.0.1:8899',  // Alternative local IP - also works
     'http://0.0.0.0:8899',    // Default in Anchor.toml but often fails in browser
   ];
   
-  const results: any = {};
+  const results: ValidatorResults = {};
   
   for (const endpoint of endpoints) {
     try {
@@ -147,10 +157,11 @@ export async function tryMultipleEndpoints(): Promise<{
           undefined,
         error: connection.error
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       results[endpoint] = {
         connected: false,
-        error: err.message
+        error: error.message
       };
     }
   }
@@ -200,11 +211,12 @@ export async function checkBoltRegistry(endpoint: string): Promise<{
       size: registryInfo.data.length,
       discriminator
     };
-  } catch (err: any) {
-    console.error('Failed to check Bolt Registry:', err);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Failed to check Bolt Registry:', error);
     return {
       exists: false,
-      error: err.message
+      error: error.message
     };
   }
 } 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Connection, PublicKey, ParsedTransactionWithMeta } from '@solana/web3.js';
+import { useState, useEffect, useCallback } from 'react';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 // Default program IDs from Anchor.toml
 const DEFAULT_PROGRAM_IDS: Record<string, string> = {
@@ -38,7 +38,13 @@ interface TransactionData {
   success: boolean;
   logs?: string[];
   walletTransaction?: boolean;
-  enhancedData?: any;
+  enhancedData?: Record<string, unknown>;
+}
+
+interface EnhancedData {
+  worldId?: string;
+  entityId?: string;
+  [key: string]: unknown;
 }
 
 export const TransactionLogger = () => {
@@ -47,7 +53,7 @@ export const TransactionLogger = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [isAutoRefresh, setIsAutoRefresh] = useState<boolean>(true);
   const [refreshInterval, setRefreshInterval] = useState<number>(5);
-  const [maxTransactions, setMaxTransactions] = useState<number>(50);
+  const [maxTransactions] = useState<number>(50);
   const [expandedTx, setExpandedTx] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -60,22 +66,18 @@ export const TransactionLogger = () => {
   const [monitorWallet, setMonitorWallet] = useState<string>('9CY2wJfRViUotLbtBD67HAAXbyVvktEyfBmuinUxTBsh');
   const [includeWalletTxs, setIncludeWalletTxs] = useState<boolean>(true);
 
-  const toggleTx = (signature: string) => {
-    if (expandedTx === signature) {
-      setExpandedTx(null);
-    } else {
-      setExpandedTx(signature);
-    }
-  };
+  const toggleTx = useCallback((signature: string) => {
+    setExpandedTx(prev => prev === signature ? null : signature);
+  }, []);
 
   // Add wallet monitoring to scan for both wallet and additional programs
-  const getAllProgramsToMonitor = () => {
+  const getAllProgramsToMonitor = useCallback(() => {
     const programs = [...Object.values(DEFAULT_PROGRAM_IDS)];
     const systemPrograms = Object.values(SYSTEM_PROGRAM_IDS);
     return [...programs, ...systemPrograms];
-  };
+  }, []);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -114,13 +116,13 @@ export const TransactionLogger = () => {
               // Determine program name from either YieldWars or system programs
               let programName = 'unknown';
               const yieldWarsProgram = Object.entries(DEFAULT_PROGRAM_IDS)
-                .find(([name, id]) => id === programIdStr);
+                .find(([, id]) => id === programIdStr);
               
               if (yieldWarsProgram) {
                 programName = yieldWarsProgram[0];
               } else {
                 const systemProgram = Object.entries(SYSTEM_PROGRAM_IDS)
-                  .find(([name, id]) => id === programIdStr);
+                  .find(([, id]) => id === programIdStr);
                 if (systemProgram) {
                   programName = `system:${systemProgram[0]}`;
                 }
@@ -160,7 +162,7 @@ export const TransactionLogger = () => {
               }
               
               // Enhance transaction data with any found IDs
-              const enhancedData: any = {};
+              const enhancedData: EnhancedData = {};
               if (worldId) enhancedData.worldId = worldId;
               if (entityId) enhancedData.entityId = entityId;
               
@@ -216,7 +218,7 @@ export const TransactionLogger = () => {
                     
                     // Check in YieldWars programs first
                     const knownProgram = Object.entries(DEFAULT_PROGRAM_IDS)
-                      .find(([name, id]) => id === programId);
+                      .find(([, id]) => id === programId);
                     
                     if (knownProgram) {
                       programName = knownProgram[0];
@@ -226,7 +228,7 @@ export const TransactionLogger = () => {
                     
                     // Then check in system programs
                     const systemProgram = Object.entries(SYSTEM_PROGRAM_IDS)
-                      .find(([name, id]) => id === programId);
+                      .find(([, id]) => id === programId);
                     
                     if (systemProgram) {
                       programName = `system:${systemProgram[0]}`;
@@ -243,7 +245,7 @@ export const TransactionLogger = () => {
               const logs = tx.meta?.logMessages || [];
               
               // Look for specific log patterns in test output
-              const enhancedData: any = {};
+              const enhancedData: EnhancedData = {};
               
               // Look for World creation in logs
               const worldCreationPattern = /Initialized a new world \(ID=(.*?)\)/;
@@ -252,45 +254,16 @@ export const TransactionLogger = () => {
                 if (match && match[1]) {
                   enhancedData.worldId = match[1];
                   setWorldId(match[1]); // Store world ID globally
-                  programName = 'bolt:world-creation';
                   break;
                 }
               }
               
-              // Look for Entity creation in logs
-              const entityCreationPattern = /Initialized a new Entity \(ID=(.*?)\)/;
-              for (const log of logs) {
-                const match = log.match(entityCreationPattern);
-                if (match && match[1]) {
-                  enhancedData.entityId = match[1];
-                  programName = 'bolt:entity-creation';
-                  // Add to global entity list
-                  setEntityIds(prev => {
-                    if (!prev.includes(match[1])) {
-                      return [...prev, match[1]];
-                    }
-                    return prev;
-                  });
-                  break;
-                }
-              }
-              
-              // Look for component initialization in logs
-              const componentPattern = /Initialized the (.*?) component\./;
-              for (const log of logs) {
-                const match = log.match(componentPattern);
-                if (match && match[1]) {
-                  enhancedData.componentType = match[1];
-                  programName = `bolt:${match[1]}-component`;
-                  break;
-                }
-              }
-              
+              // Add to transaction list
               allTransactions.push({
                 signature: sig.signature,
                 timestamp: sig.blockTime ? sig.blockTime * 1000 : Date.now(),
-                programId: programIdStr || 'unknown',
-                programName: programName || 'wallet-tx',
+                programId: programIdStr,
+                programName,
                 success: tx.meta?.err === null,
                 logs,
                 walletTransaction: true,
@@ -301,41 +274,48 @@ export const TransactionLogger = () => {
             }
           }
         } catch (err) {
-          console.error(`Error fetching signatures for wallet ${monitorWallet}:`, err);
+          console.error('Error fetching wallet transactions:', err);
         }
       }
       
       // Combine new transactions with existing ones, sort by timestamp (newest first)
       // and limit to maxTransactions
       setTransactions(prev => {
-        const combined = [...allTransactions, ...prev]
+        const combined = [...prev, ...allTransactions]
           .sort((a, b) => b.timestamp - a.timestamp)
           .slice(0, maxTransactions);
         return combined;
       });
       
       setLastRefresh(new Date());
-    } catch (err: any) {
+      
+    } catch (err) {
       console.error('Error fetching transactions:', err);
-      setError(`Error fetching transactions: ${err.message}`);
+      setError(`Error fetching transactions: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [endpoint, getAllProgramsToMonitor, includeWalletTxs, maxTransactions, monitorWallet, transactions]);
 
-  // Auto refresh with faster interval in test mode
   useEffect(() => {
-    if (!isAutoRefresh) return;
-    
-    // Initial fetch
-    fetchTransactions();
-    
-    const intervalId = setInterval(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (isAutoRefresh) {
+      // Initial fetch
       fetchTransactions();
-    }, (testMode ? 2 : refreshInterval) * 1000);
-    
-    return () => clearInterval(intervalId);
-  }, [isAutoRefresh, refreshInterval, endpoint, maxTransactions, testMode]);
+      
+      // Set up interval for subsequent fetches
+      intervalId = setInterval(() => {
+        fetchTransactions();
+      }, refreshInterval * 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isAutoRefresh, refreshInterval, fetchTransactions]);
 
   const formatTimeAgo = (timestamp: number) => {
     const now = Date.now();
@@ -627,22 +607,16 @@ export const TransactionLogger = () => {
                         <div className="mt-2 p-2 bg-blue-900/30 rounded">
                           <h5 className="text-blue-300 text-sm font-medium mb-1">Extracted Information:</h5>
                           <div className="space-y-1">
-                            {tx.enhancedData.worldId && (
+                            {(tx.enhancedData?.worldId as string) && (
                               <div className="flex justify-between text-xs">
                                 <span className="text-gray-300">World ID:</span>
-                                <span className="font-mono text-blue-300">{tx.enhancedData.worldId}</span>
+                                <span className="font-mono text-blue-300">{tx.enhancedData.worldId as string}</span>
                               </div>
                             )}
-                            {tx.enhancedData.entityId && (
+                            {(tx.enhancedData?.entityId as string) && (
                               <div className="flex justify-between text-xs">
                                 <span className="text-gray-300">Entity ID:</span>
-                                <span className="font-mono text-blue-300">{tx.enhancedData.entityId}</span>
-                              </div>
-                            )}
-                            {tx.enhancedData.componentType && (
-                              <div className="flex justify-between text-xs">
-                                <span className="text-gray-300">Component:</span>
-                                <span className="font-mono text-blue-300">{tx.enhancedData.componentType}</span>
+                                <span className="font-mono text-blue-300">{tx.enhancedData.entityId as string}</span>
                               </div>
                             )}
                           </div>

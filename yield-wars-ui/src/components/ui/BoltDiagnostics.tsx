@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection } from '@solana/web3.js';
 import { 
   checkValidatorConnection, 
   checkBoltWorld, 
@@ -9,7 +9,54 @@ import {
   listProgramAccounts, 
   tryMultipleEndpoints 
 } from '@/utils/validator-check';
-import { decodeAccountData, fetchProgramAccountsDetailed } from '@/utils/bolt-decoder-enhanced';
+import { decodeAccountData } from '@/utils/bolt-decoder-enhanced';
+
+interface ValidatorInfo {
+  connected: boolean;
+  slot?: number;
+  error?: string;
+  version?: string;
+  recentBlockhash?: string;
+}
+
+interface BoltWorldInfo {
+  worldExists: boolean;
+  error?: string;
+  registryExists?: boolean;
+  registryOwner?: string;
+}
+
+interface ProgramAccountInfo {
+  success: boolean;
+  count?: number;
+  accounts?: string[];
+  error?: string;
+}
+
+interface EndpointResult {
+  connected: boolean;
+  error?: string;
+  details?: {
+    version: string;
+    slot: number;
+  };
+}
+
+interface RegistryInfo {
+  exists: boolean;
+  success: boolean;
+  isInitialized?: boolean;
+  error?: string;
+  size?: number;
+  owner?: string;
+  discriminator?: string;
+}
+
+interface AccountDetails {
+  type?: string;
+  data?: Record<string, unknown>;
+  error?: string;
+}
 
 const DEFAULT_PROGRAM_IDS: Record<string, string> = {
   wallet: 'BXYCAQBizX4Pddjq5XivVEQn9Tbc7NF9zzLd3CSUXysz',
@@ -34,12 +81,12 @@ const BOLT_SYSTEM_IDS = {
 export const BoltDiagnostics = () => {
   const [endpoint, setEndpoint] = useState('http://localhost:8899');
   const [loading, setLoading] = useState(false);
-  const [validatorInfo, setValidatorInfo] = useState<any>(null);
-  const [boltWorldInfo, setBoltWorldInfo] = useState<any>(null);
-  const [programAccounts, setProgramAccounts] = useState<Record<string, any>>({});
-  const [endpointResults, setEndpointResults] = useState<any>(null);
-  const [registryTest, setRegistryTest] = useState<any>(null);
-  const [accountDetails, setAccountDetails] = useState<Record<string, any>>({});
+  const [validatorInfo, setValidatorInfo] = useState<ValidatorInfo | null>(null);
+  const [boltWorldInfo, setBoltWorldInfo] = useState<BoltWorldInfo | null>(null);
+  const [programAccounts, setProgramAccounts] = useState<Record<string, ProgramAccountInfo>>({});
+  const [endpointResults, setEndpointResults] = useState<Record<string, EndpointResult> | null>(null);
+  const [registryTest, setRegistryTest] = useState<RegistryInfo | null>(null);
+  const [accountDetails, setAccountDetails] = useState<Record<string, AccountDetails>>({});
   const [activeConnection, setActiveConnection] = useState<Connection | null>(null);
   const [diagnosticsSummary, setDiagnosticsSummary] = useState<{
     status: 'success' | 'warning' | 'error';
@@ -91,7 +138,7 @@ export const BoltDiagnostics = () => {
   const checkPrograms = async () => {
     setLoading(true);
     try {
-      const results: Record<string, any> = {};
+      const results: Record<string, ProgramAccountInfo> = {};
       
       for (const [name, id] of Object.entries(DEFAULT_PROGRAM_IDS)) {
         try {
@@ -106,7 +153,11 @@ export const BoltDiagnostics = () => {
               
               setAccountDetails(prev => ({
                 ...prev,
-                [firstAccount]: decoded
+                [firstAccount]: {
+                  type: decoded?.type || 'Unknown',
+                  data: decoded && 'data' in decoded ? decoded.data as Record<string, unknown> : {},
+                  error: decoded && 'error' in decoded ? decoded.error : undefined
+                }
               }));
             } catch (decodeErr) {
               console.error(`Error decoding account for ${name}:`, decodeErr);
@@ -131,7 +182,7 @@ export const BoltDiagnostics = () => {
     setLoading(true);
     try {
       const results = await tryMultipleEndpoints();
-      setEndpointResults(results);
+      setEndpointResults(results as Record<string, EndpointResult>);
       
       // Set the first working endpoint as active
       for (const [url, result] of Object.entries(results)) {
@@ -155,8 +206,8 @@ export const BoltDiagnostics = () => {
     setLoading(true);
     try {
       const registryDetails = await checkBoltRegistry(endpoint);
-      setRegistryTest(registryDetails);
-      return registryDetails;
+      setRegistryTest({ ...registryDetails, success: true });
+      return { ...registryDetails, success: true };
     } catch (err) {
       console.error('Error testing registry account:', err);
       setRegistryTest({
@@ -178,7 +229,11 @@ export const BoltDiagnostics = () => {
       const details = await decodeAccountData(activeConnection, accountAddress, programId);
       setAccountDetails(prev => ({
         ...prev,
-        [accountAddress]: details
+        [accountAddress]: {
+          type: details?.type || 'Unknown',
+          data: details && 'data' in details ? details.data as Record<string, unknown> : {},
+          error: details && 'error' in details ? details.error : undefined
+        }
       }));
     } catch (err) {
       console.error('Error fetching account details:', err);
@@ -200,7 +255,7 @@ export const BoltDiagnostics = () => {
     try {
       // Run all diagnostics
       const endpointTest = await checkAllEndpoints();
-      const validatorTest = await runValidatorCheck();
+      await runValidatorCheck();
       const boltWorldTest = await runBoltWorldCheck();
       const programTest = await checkPrograms();
       const registryCheckResult = await testRegistryAccount();
@@ -228,7 +283,7 @@ export const BoltDiagnostics = () => {
       
       // Check for program accounts
       const hasAnyProgramAccounts = programTest && 
-        Object.values(programTest).some(p => p.success && p.count > 0);
+        Object.values(programTest).some(p => p.success && (p.count ?? 0) > 0);
       
       if (!hasAnyProgramAccounts) {
         issues.push('No program accounts found for any components. Check if your test has created any entities.');
@@ -430,7 +485,7 @@ export const BoltDiagnostics = () => {
         <div className="mb-6">
           <h3 className="text-xl font-semibold mb-2">Endpoint Tests</h3>
           <div className="bg-gray-700 p-4 rounded-md">
-            {Object.entries(endpointResults).map(([url, result]: [string, any]) => (
+            {Object.entries(endpointResults).map(([url, result]: [string, EndpointResult]) => (
               <div key={url} className="mb-2 last:mb-0 p-2 rounded-md bg-gray-800">
                 <div className="flex justify-between">
                   <span className="font-mono">{url}</span>
@@ -527,7 +582,7 @@ export const BoltDiagnostics = () => {
         <div className="mb-6">
           <h3 className="text-xl font-semibold mb-2">Program Accounts</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(programAccounts).map(([name, info]: [string, any]) => (
+            {Object.entries(programAccounts).map(([name, info]: [string, ProgramAccountInfo]) => (
               <div key={name} className="bg-gray-700 p-4 rounded-md">
                 <div className="flex justify-between">
                   <span className="font-semibold">{name}</span>
@@ -535,7 +590,7 @@ export const BoltDiagnostics = () => {
                     {info.success ? `✓ ${info.count || 0} accounts` : "✗ Failed"}
                   </span>
                 </div>
-                {info.success && info.count > 0 && (
+                {info.success && (info.count ?? 0) > 0 && (
                   <div className="mt-2 text-sm max-h-40 overflow-y-auto">
                     <div className="font-medium mb-1">Account Addresses:</div>
                     {info.accounts?.map((address: string, idx: number) => (

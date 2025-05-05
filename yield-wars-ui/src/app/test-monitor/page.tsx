@@ -32,16 +32,16 @@ export default function TestMonitorPage() {
                 <li>Make sure Anchor tests are running (e.g., <code className="bg-gray-800 px-1 rounded">anchor test</code>)</li>
                 <li>Check that Bolt World program is properly initialized</li>
                 <li>Confirm the Registry account exists in your test environment</li>
-                <li>Browser security may require you to use IP instead of "localhost"</li>
+                <li>Browser security may require you to use IP instead of &ldquo;localhost&rdquo;</li>
               </ul>
             </div>
             <div className="bg-indigo-900/30 p-3 rounded-md flex-1">
               <h3 className="font-medium text-indigo-300 mb-1">Common Error Patterns</h3>
               <ul className="list-disc list-inside space-y-1">
-                <li>"Unable to find Registry account" - Registry not initialized</li>
-                <li>"Component not initialized" - Missing component creation</li>
-                <li>"unknown account" - Entity or component not found</li>
-                <li>"Invalid instruction" - System input mismatch</li>
+                <li>&ldquo;Unable to find Registry account&rdquo; - Registry not initialized</li>
+                <li>&ldquo;Component not initialized&rdquo; - Missing component creation</li>
+                <li>&ldquo;unknown account&rdquo; - Entity or component not found</li>
+                <li>&ldquo;Invalid instruction&rdquo; - System input mismatch</li>
               </ul>
             </div>
           </div>
