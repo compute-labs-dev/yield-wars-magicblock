@@ -11,6 +11,8 @@ const config: Config = {
     safelist: [
         'bg-black/30',
         'bg-black/10',
+        'bg-black/20',
+        'bg-black/50',
         'border-yellow-500', 
         'border-gray-300',
         'border-amber-700',
@@ -18,9 +20,19 @@ const config: Config = {
         'text-gray-300',
         'text-amber-700',
         'bg-primary-DEFAULT',
+        'bg-primary-dark/20',
         'border-primary-fog-light',
+        'border-primary-fog/30',
         'text-primary-light',
         'bg-gray-compute',
+        'bg-gray-compute/50',
+        'text-gray-light',
+        'text-error',
+        'text-white',
+        'hover:bg-primary-DEFAULT',
+        'hover:bg-primary-dark/20',
+        'hover:text-white',
+        'bg-primary-DEFAULT/20',
     ],
     theme: {
         extend: {
