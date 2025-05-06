@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Connection, PublicKey, ParsedTransactionWithMeta, VersionedTransactionResponse } from '@solana/web3.js';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 // Default program IDs from Anchor.toml
 const DEFAULT_PROGRAM_IDS: Record<string, string> = {
@@ -38,7 +38,7 @@ interface TransactionData {
   success: boolean;
   logs?: string[];
   walletTransaction?: boolean;
-  enhancedData?: any;
+  enhancedData?: EnhancedData;
 }
 
 interface SessionInfo {
@@ -50,20 +50,38 @@ interface SessionInfo {
   errors: string[];
 }
 
+interface EnhancedData {
+  _hasWorldMention?: boolean;
+  _hasEntityMention?: boolean;
+  _hasComponentMention?: boolean;
+  _hasSystemMention?: boolean;
+  worldId?: string;
+  entityId?: string;
+  componentType?: string;
+  systemType?: string;
+  isEcsOperation?: boolean;
+  registryEvent?: string;
+  worldAccountEvent?: string;
+  error?: string;
+  isBoltFrameworkTx?: boolean;
+  registryOperation?: boolean;
+  worldOperation?: boolean;
+}
+
 export const EnhancedTransactionMonitor = () => {
   // Multiple endpoints to try for better reliability in test environments
-  const ENDPOINTS = [
+  const ENDPOINTS = useMemo(() => [
     'http://localhost:8899',  // This works - prioritize it
     'http://127.0.0.1:8899',  // This also works
     'http://0.0.0.0:8899'     // This fails - move to last
-  ];
+  ], []);
 
   const [endpoint, setEndpoint] = useState<string>(ENDPOINTS[0]);
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [isAutoRefresh, setIsAutoRefresh] = useState<boolean>(true);
-  const [refreshInterval, setRefreshInterval] = useState<number>(2); // Fast refresh for tests
-  const [maxTransactions, setMaxTransactions] = useState<number>(100);
+  const [refreshInterval] = useState<number>(2); // Fast refresh for tests
+  const [maxTransactions] = useState<number>(100);
   const [expandedTx, setExpandedTx] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -114,7 +132,7 @@ export const EnhancedTransactionMonitor = () => {
     setConnectionStatus('disconnected');
     setStatusMessage('Failed to connect to any endpoint. Is the validator running?');
     return null;
-  }, [activeConnection, endpoint]);
+  }, [ENDPOINTS, endpoint, activeConnection]);
 
   useEffect(() => {
     // Test connections on initial load - only once
@@ -140,7 +158,7 @@ export const EnhancedTransactionMonitor = () => {
 
   // Significantly enhance the processLogs function to catch more patterns
   const processLogs = (logs: string[]) => {
-    const enhancedData: any = {};
+    const enhancedData: EnhancedData = {};
     
     // Check for direct mentions of World, Entity, Component, or System in any logs
     const hasWorldMention = logs.some(log => log.toLowerCase().includes('world'));
@@ -367,20 +385,69 @@ export const EnhancedTransactionMonitor = () => {
     return enhancedData;
   };
 
-  const fetchTransactions = async () => {
-    // Don't try to refetch if already loading
-    if (loading) return;
-
-    if (connectionStatus !== 'connected' || !activeConnection) {
-      // Try to establish connection
-      console.log("No active connection, attempting to connect...");
-      const connection = await testConnections();
-      if (!connection) {
-        console.error("Failed to establish connection to any endpoint");
-        return;
-      }
-    }
+  // Add a direct action-based session update function
+  const updateSessionInfo = useCallback((action: 'set-world' | 'add-entity' | 'add-component' | 'add-system' | 'add-error', value: string) => {
+    console.log(`📊 Session update: ${action} = ${value}`);
     
+    switch (action) {
+      case 'set-world':
+        setSessionInfo(prev => ({
+          ...prev,
+          worldId: value
+        }));
+        break;
+      case 'add-entity':
+        setSessionInfo(prev => {
+          if (!prev.entityIds.includes(value)) {
+            return {
+              ...prev,
+              entityIds: [...prev.entityIds, value]
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'add-component':
+        setSessionInfo(prev => {
+          if (!prev.componentsInitialized.includes(value)) {
+            return {
+              ...prev,
+              componentsInitialized: [...prev.componentsInitialized, value]
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'add-system':
+        setSessionInfo(prev => {
+          if (!prev.systemsApplied.includes(value)) {
+            return {
+              ...prev,
+              systemsApplied: [...prev.systemsApplied, value]
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'add-error':
+        setSessionInfo(prev => {
+          if (!prev.errors.includes(value)) {
+            return {
+              ...prev,
+              errors: [...prev.errors, value]
+            };
+          }
+          return prev;
+        });
+        break;
+    }
+  }, []);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!activeConnection || connectionStatus !== 'connected') {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -430,13 +497,13 @@ export const EnhancedTransactionMonitor = () => {
               // Determine program name from either YieldWars or system programs
               let programName = 'unknown';
               const yieldWarsProgram = Object.entries(DEFAULT_PROGRAM_IDS)
-                .find(([name, id]) => id === programIdStr);
+                .find(([id]) => id === programIdStr);
               
               if (yieldWarsProgram) {
                 programName = yieldWarsProgram[0];
               } else {
                 const systemProgram = Object.entries(SYSTEM_PROGRAM_IDS)
-                  .find(([name, id]) => id === programIdStr);
+                  .find(([id]) => id === programIdStr);
                 if (systemProgram) {
                   programName = `system:${systemProgram[0]}`;
                 }
@@ -662,33 +729,39 @@ export const EnhancedTransactionMonitor = () => {
         setError('No successful program queries. Connection may be unstable.');
       }
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching transactions:', err);
-      setError(`Error fetching transactions: ${err.message}`);
+      setError(`Error fetching transactions: ${err instanceof Error ? err.message : String(err)}`);
       
       // Check if it's a connection error and try to reconnect
-      if (err.message.includes('connection') || err.message.includes('network')) {
+      if (err instanceof Error && (err.message.includes('connection') || err.message.includes('network'))) {
         console.log('Connection error detected, attempting to reconnect...');
         testConnections();
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeConnection, connectionStatus, endpoint, maxTransactions, processedProgramIds, sessionInfo, transactions, loading, processLogs, testConnections, updateSessionInfo]);
 
-  // Auto refresh with interval
   useEffect(() => {
-    if (!isAutoRefresh) return;
-    
-    // Initial fetch
-    fetchTransactions();
-    
-    const intervalId = setInterval(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (isAutoRefresh && connectionStatus === 'connected') {
+      // Initial fetch
       fetchTransactions();
-    }, refreshInterval * 1000);
-    
-    return () => clearInterval(intervalId);
-  }, [isAutoRefresh, refreshInterval, connectionStatus, activeConnection]);
+      
+      // Set up interval for subsequent fetches
+      intervalId = setInterval(() => {
+        fetchTransactions();
+      }, refreshInterval * 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isAutoRefresh, connectionStatus, refreshInterval, fetchTransactions]);
 
   const formatTimeAgo = (timestamp: number) => {
     const now = Date.now();
@@ -732,64 +805,6 @@ export const EnhancedTransactionMonitor = () => {
     const seconds = elapsed % 60;
     return `${minutes}m ${seconds}s`;
   };
-
-  // Add a direct action-based session update function
-  const updateSessionInfo = useCallback((action: 'set-world' | 'add-entity' | 'add-component' | 'add-system' | 'add-error', value: string) => {
-    console.log(`📊 Session update: ${action} = ${value}`);
-    
-    switch (action) {
-      case 'set-world':
-        setSessionInfo(prev => ({
-          ...prev,
-          worldId: value
-        }));
-        break;
-      case 'add-entity':
-        setSessionInfo(prev => {
-          if (!prev.entityIds.includes(value)) {
-            return {
-              ...prev,
-              entityIds: [...prev.entityIds, value]
-            };
-          }
-          return prev;
-        });
-        break;
-      case 'add-component':
-        setSessionInfo(prev => {
-          if (!prev.componentsInitialized.includes(value)) {
-            return {
-              ...prev,
-              componentsInitialized: [...prev.componentsInitialized, value]
-            };
-          }
-          return prev;
-        });
-        break;
-      case 'add-system':
-        setSessionInfo(prev => {
-          if (!prev.systemsApplied.includes(value)) {
-            return {
-              ...prev,
-              systemsApplied: [...prev.systemsApplied, value]
-            };
-          }
-          return prev;
-        });
-        break;
-      case 'add-error':
-        setSessionInfo(prev => {
-          if (!prev.errors.includes(value)) {
-            return {
-              ...prev,
-              errors: [...prev.errors, value]
-            };
-          }
-          return prev;
-        });
-        break;
-    }
-  }, []);
 
   // Make sure we initialize with at least one of each if we have bolt transactions but nothing detected
   const ensureMinimumSession = useCallback(() => {

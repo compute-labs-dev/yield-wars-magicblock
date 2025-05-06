@@ -1,0 +1,25 @@
+{
+  "type": "Topology",
+  "objects": {
+    "continents": {
+      "type": "GeometryCollection",
+      "geometries": [
+        {
+          "type": "MultiPolygon",
+          "properties": { "name": "North America" },
+          "coordinates": [[[[100, 0], [100, 90], [-100, 90], [-100, 0], [100, 0]]]]
+        },
+        {
+          "type": "MultiPolygon",
+          "properties": { "name": "Europe" },
+          "coordinates": [[[[0, 40], [60, 40], [60, 70], [0, 70], [0, 40]]]]
+        },
+        {
+          "type": "MultiPolygon",
+          "properties": { "name": "Asia" },
+          "coordinates": [[[[60, 0], [180, 0], [180, 80], [60, 80], [60, 0]]]]
+        }
+      ]
+    }
+  }
+} 

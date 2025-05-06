@@ -67,5 +67,5 @@ solana-test-validator
 - \`src/hooks/\` - Custom React hooks
 - \`src/lib/\` - Utility libraries and configurations
 - \`src/models/\` - TypeScript interfaces and type definitions
-- \`src/stores/\` - State management using Zustand
+- \`src/stores/\` - State management using Redux
 - \`src/utils/\` - Helper functions and utilities

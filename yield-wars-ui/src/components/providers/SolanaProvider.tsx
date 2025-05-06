@@ -29,7 +29,7 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
     ],
-    [network]
+    []
   );
 
   return (

@@ -1,6 +1,76 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import * as BoltSDK from '@magicblock-labs/bolt-sdk';
-import { decodeBoltComponent } from './bolt-decoder';
+import { decodeBoltComponent, DecodedComponent } from './bolt-decoder';
+
+interface WalletData {
+  type: 'Wallet';
+  data: {
+    usdcBalance: bigint;
+    btcBalance: bigint;
+    ethBalance: bigint;
+    solBalance: bigint;
+    aifiBalance: bigint;
+  };
+}
+
+interface OwnershipData {
+  type: 'Ownership';
+  data: {
+    ownerType: number;
+    ownedEntities: string;
+  };
+}
+
+interface PriceData {
+  type: 'Price';
+  data: {
+    currentPrice: bigint;
+  };
+}
+
+interface RegistryData {
+  type: 'Registry';
+  size: number;
+  owner: string;
+  error?: string;
+  data: Record<string, unknown>;
+}
+
+interface WorldData {
+  type: 'World';
+  size: number;
+  executable: boolean;
+  owner: string;
+  data: Record<string, unknown>;
+}
+
+interface ErrorData {
+  type: 'Error';
+  error: string;
+  dataSize: string;
+  data: Record<string, unknown>;
+}
+
+type DecodedAccountData = WalletData | OwnershipData | PriceData | RegistryData | WorldData | ErrorData | DecodedComponent | null;
+
+interface DecodedProgramAccount {
+  address: string;
+  decoded: DecodedAccountData;
+  lamports: number;
+  owner: string;
+  executable: boolean;
+  rentEpoch: number | undefined;
+  size: number;
+}
+
+interface RegistryDetailedResponse {
+  exists: boolean;
+  owner?: string;
+  data?: {
+    size: number;
+    discriminator?: string;
+  };
+  error?: string;
+}
 
 /**
  * Attempts to decode account data using MagicBlock SDK or fallback to generic decoder
@@ -14,7 +84,7 @@ export async function decodeAccountData(
   connection: Connection, 
   accountAddress: string, 
   programId: string
-): Promise<any> {
+): Promise<DecodedAccountData> {
   try {
     const accountInfo = await connection.getAccountInfo(new PublicKey(accountAddress));
     if (!accountInfo) {
@@ -82,14 +152,22 @@ export async function decodeAccountData(
           return {
             type: 'Registry',
             size: accountInfo.data.length,
-            owner: accountInfo.owner.toString()
+            owner: accountInfo.owner.toString(),
+            data: {
+              size: accountInfo.data.length,
+              discriminator: Buffer.from(accountInfo.data.slice(0, 8)).toString('hex')
+            }
           };
         } catch (err) {
           console.error('Error decoding Registry account:', err);
           return {
             type: 'Registry',
             size: accountInfo.data.length,
-            error: 'Failed to decode registry'
+            owner: accountInfo.owner.toString(),
+            error: 'Failed to decode registry',
+            data: {
+              size: accountInfo.data.length
+            }
           };
         }
         
@@ -99,7 +177,8 @@ export async function decodeAccountData(
           type: 'World',
           size: accountInfo.data.length,
           executable: accountInfo.executable,
-          owner: accountInfo.owner.toString()
+          owner: accountInfo.owner.toString(),
+          data: {}
         };
         
       // Default - try generic decoder
@@ -109,8 +188,10 @@ export async function decodeAccountData(
   } catch (err) {
     console.error('Error decoding account:', err);
     return {
+      type: 'Error',
       error: `Failed to decode: ${(err as Error).message}`,
-      dataSize: 'unknown'
+      dataSize: 'unknown',
+      data: {}
     };
   }
 }
@@ -125,7 +206,7 @@ export async function decodeAccountData(
 export async function fetchProgramAccountsDetailed(
   connection: Connection,
   programId: string
-): Promise<any[]> {
+): Promise<DecodedProgramAccount[]> {
   try {
     const accounts = await connection.getProgramAccounts(new PublicKey(programId));
     
@@ -155,12 +236,7 @@ export async function fetchProgramAccountsDetailed(
  * @param connection Active Solana connection
  * @returns Information about the registry account
  */
-export async function checkRegistryDetailed(connection: Connection): Promise<{
-  exists: boolean;
-  owner?: string;
-  data?: any;
-  error?: string;
-}> {
+export async function checkRegistryDetailed(connection: Connection): Promise<RegistryDetailedResponse> {
   try {
     const registryId = new PublicKey('EHLkWwAT9oebVv9ht3mtqrvHhRVMKrt54tF3MfHTey2K');
     const registryInfo = await connection.getAccountInfo(registryId);
@@ -171,7 +247,6 @@ export async function checkRegistryDetailed(connection: Connection): Promise<{
     
     // Try to decode registry data
     try {
-      // Placeholder for SDK decoding - replace with actual SDK code when available
       return {
         exists: true,
         owner: registryInfo.owner.toString(),
@@ -181,17 +256,19 @@ export async function checkRegistryDetailed(connection: Connection): Promise<{
         }
       };
     } catch (decodeErr) {
+      const error = decodeErr as Error;
       return {
         exists: true,
         owner: registryInfo.owner.toString(),
-        error: `Failed to decode registry: ${(decodeErr as Error).message}`,
+        error: `Failed to decode registry: ${error.message}`,
         data: { size: registryInfo.data.length }
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     return {
       exists: false,
-      error: err.message
+      error: error.message
     };
   }
 } 

@@ -1,77 +1,74 @@
-import Image from "next/image";
-import Link from "next/link";
+'use client'
+import { RetroGrid } from "@/components/ui/RetroGrid";
+import { Globe } from "@/components/globes/globe";
+import { useEffect } from 'react';
+import React from 'react';
+import { generateGlobeMarkers } from "@/lib/markers";
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/stores/store';
+import {
+    toggleResourcesVisible,
+    toggleLeaderboardVisible
+} from '@/stores/features/uiSlice';
+import { WaitlistTerminal } from "@/components/home/WaitlistTerminal";
+// Generate markers once at module level to keep them consistent
+const globeMarkers = generateGlobeMarkers();
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <h1 className="text-4xl font-bold">YieldWars</h1>
-        
-        <div className="text-center sm:text-left">
-          <p className="mb-4">A Solana-based strategy game using Bolt/Anchor</p>
-          
-          <h2 className="text-2xl font-semibold mt-8 mb-4">Developer Tools</h2>
-          <ul className="list-disc list-inside mb-6">
-            <li className="mb-2">
-              <Link 
-                href="/test-monitor" 
-                className="text-indigo-500 hover:underline font-medium"
-              >
-                Enhanced Test Monitor
-              </Link>
-              {" - "}
-              <span className="text-gray-500">Specialized test session monitor with real-time entity and component tracking</span>
-            </li>
-            <li className="mb-2">
-              <Link 
-                href="/pda-monitor" 
-                className="text-blue-500 hover:underline"
-              >
-                Blockchain Monitor
-              </Link>
-              {" - "}
-              <span className="text-gray-500">Complete monitoring dashboard for PDAs, transactions, and diagnostics</span>
-            </li>
-          </ul>
-        </div>
+  const isInitialLoad = useSelector((state: RootState) => state.ui.isInitialLoad);
+  const dispatch = useDispatch();
+  
+  // Effect to trigger initial appearance of side panels after a delay
+  useEffect(() => {
+    let panelTimer: NodeJS.Timeout | undefined;
+    if (isInitialLoad) {
+      panelTimer = setTimeout(() => {
+        // Dispatch actions when timer fires
+        // The cleanup function ensures this only runs if isInitialLoad was true the whole time
+        dispatch(toggleResourcesVisible());
+        dispatch(toggleLeaderboardVisible());
+      }, 10000); // 10 second delay, adjust as needed
+    }
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <Link
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-indigo-600 text-white gap-2 hover:bg-indigo-700 font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="/test-monitor"
-          >
-            Open Test Monitor
-          </Link>
-          <Link
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="/pda-monitor"
-          >
-            Open Blockchain Monitor
-          </Link>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
-            href="https://docs.magicblock.gg/bolt/getting-started/overview"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Bolt Documentation
-          </a>
+    // Cleanup function: Clears the timer if the component unmounts
+    // or if isInitialLoad becomes false before the timer fires.
+    return () => {
+      if (panelTimer) {
+        clearTimeout(panelTimer);
+      }
+    };
+  }, [isInitialLoad, dispatch]); // Depend on isInitialLoad and dispatch
+
+  return (
+    <>
+      {/* Main content */}
+      <div className="relative flex flex-col items-center justify-center min-h-screen w-full bg-black overflow-hidden">
+        {/* RetroGrid background - appears after delay */}
+        <RetroGrid 
+          className="fixed inset-0"
+          angle={65}
+          cellSize={30}
+          opacity={0.2}
+          lightLineColor="rgba(0, 255, 50, 0.5)"
+        />
+
+        {/* Globe positioned to fill the screen */}
+        <Globe 
+          className="fixed inset-0 z-10" 
+          appearDelay={0} 
+          quickTransition={!isInitialLoad}
+          markers={globeMarkers}
+        />
+
+        {/* Main content on top of grid and globe */}
+        <div className="relative z-20 flex flex-col w-full h-full items-center justify-center">
+          {/* Terminal positioned with proper spacing */}
+          <div className="w-full flex items-center justify-center mb-12 md:mb-48">
+            <WaitlistTerminal className="w-full" />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <Link
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="/test-monitor"
-        >
-          Test Monitor
-        </Link>
-        <Link
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="/pda-monitor"
-        >
-          Blockchain Monitor
-        </Link>
-      </footer>
-    </div>
+      </div>
+    </>
   );
 }
+

@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { useWallet } from '@solana/wallet-adapter-react';
+// import { useWallet } from '@solana/wallet-adapter-react';
 import { decodeBoltComponent, formatCurrencyValue } from '@/utils/bolt-decoder';
 import { decodeAccountData } from '@/utils/bolt-decoder-enhanced';
 
 interface PDAData {
   address: string;
   type: string;
-  data: any;
+  data: Record<string, unknown>;
   programId: string;
 }
 
@@ -41,6 +41,13 @@ const SYSTEM_PROGRAM_IDS: Record<string, string> = {
 };
 
 export const PDAMonitor = () => {
+  // Multiple endpoints to try for better reliability in test environments
+  const ENDPOINTS = useMemo(() => [
+    'http://localhost:8899',  // This works - prioritize it
+    'http://127.0.0.1:8899',  // This also works
+    'http://0.0.0.0:8899'     // This fails - move to last
+  ], []);
+
   const [pdas, setPdas] = useState<PDAData[]>([]);
   const [programIds, setProgramIds] = useState<string[]>([]);
   const [programIdInput, setProgramIdInput] = useState<string>('');
@@ -59,15 +66,8 @@ export const PDAMonitor = () => {
     attempts: number;
     successes: number;
   }>({ attempts: 0, successes: 0 });
-  
-  const { connected } = useWallet();
 
-  // Multiple endpoints to try for better reliability in test environments
-  const ENDPOINTS = [
-    'http://localhost:8899',  // This works - prioritize it
-    'http://127.0.0.1:8899',  // This also works
-    'http://0.0.0.0:8899'     // This fails - move to last
-  ];
+  // const { publicKey } = useWallet();
 
   // Test for connection and find working endpoint
   const testConnections = useCallback(async () => {
@@ -95,38 +95,10 @@ export const PDAMonitor = () => {
     setConnectionStatus('disconnected');
     setError('Failed to connect to any endpoint. Is the validator running?');
     return null;
-  }, []);
-
-  useEffect(() => {
-    // Test connections on initial load
-    testConnections();
-  }, [testConnections]);
-
-  // Set default program IDs on component mount
-  useEffect(() => {
-    setProgramIds([
-      ...Object.values(DEFAULT_PROGRAM_IDS),
-      SYSTEM_PROGRAM_IDS['bolt-world'],
-      SYSTEM_PROGRAM_IDS['bolt-registry']
-    ]);
-  }, []);
-
-  const addProgramId = () => {
-    if (!programIdInput) return;
-    
-    if (!programIds.includes(programIdInput)) {
-      setProgramIds([...programIds, programIdInput]);
-    }
-    
-    setProgramIdInput('');
-  };
-
-  const removeProgramId = (id: string) => {
-    setProgramIds(programIds.filter(programId => programId !== id));
-  };
+  }, [ENDPOINTS]);
 
   // Function to fetch PDAs from multiple program IDs
-  const fetchPDAs = async () => {
+  const fetchPDAs = useCallback(async () => {
     if (programIds.length === 0) {
       setError('Please add at least one Program ID');
       return;
@@ -180,7 +152,7 @@ export const PDAMonitor = () => {
                 allPdasData.push({
                   address: account.pubkey.toString(),
                   type: result.type || 'Unknown',
-                  data: result.data || result,
+                  data: result.data as unknown as Record<string, unknown>,
                   programId
                 });
               } else {
@@ -192,7 +164,7 @@ export const PDAMonitor = () => {
                   allPdasData.push({
                     address: account.pubkey.toString(),
                     type: basicResult.type,
-                    data: basicResult.data,
+                    data: basicResult.data as unknown as Record<string, unknown>,
                     programId
                   });
                 } else {
@@ -240,44 +212,67 @@ export const PDAMonitor = () => {
         setError('Failed to query any program accounts. Check connection and try again.');
       }
       
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error in fetch operation:', err);
-      setError(`Error fetching PDAs: ${err.message}`);
+      setError(`Error fetching PDAs: ${(err as Error).message}`);
       
       // Check if it's a connection error and try to reconnect
-      if (err.message.includes('connection') || err.message.includes('network')) {
+      if ((err as Error).message.includes('connection') || (err as Error).message.includes('network')) {
         console.log('Connection error detected, attempting to reconnect...');
         testConnections();
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeConnection, connectionStatus, loading, programIds, testConnections]);
 
-  // Smart auto refresh with connection check
   useEffect(() => {
-    if (!isAutoRefresh) return;
-    
-    // Initial fetch only if we have an active connection
-    if (connectionStatus === 'connected') {
-      console.log("Initial fetch with active connection");
+    // Test connections on initial load
+    testConnections();
+  }, [testConnections]);
+
+  useEffect(() => {
+    // Set default program IDs on component mount
+    setProgramIds([
+      ...Object.values(DEFAULT_PROGRAM_IDS),
+      SYSTEM_PROGRAM_IDS['bolt-world'],
+      SYSTEM_PROGRAM_IDS['bolt-registry']
+    ]);
+  }, []);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (isAutoRefresh && connectionStatus === 'connected') {
+      // Initial fetch
       fetchPDAs();
+      
+      // Set up interval for subsequent fetches
+      intervalId = setInterval(() => {
+        fetchPDAs();
+      }, refreshInterval * 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isAutoRefresh, connectionStatus, refreshInterval, fetchPDAs]);
+
+  const addProgramId = () => {
+    if (!programIdInput) return;
+    
+    if (!programIds.includes(programIdInput)) {
+      setProgramIds([...programIds, programIdInput]);
     }
     
-    const intervalId = setInterval(() => {
-      // Only refresh if not already loading and we have an active connection
-      if (!loading && connectionStatus === 'connected') {
-        console.log("Auto-refreshing PDAs...");
-        fetchPDAs();
-      } else if (connectionStatus !== 'connected') {
-        // If we lost connection, try to reconnect
-        console.log("Connection lost, attempting to reconnect...");
-        testConnections();
-      }
-    }, refreshInterval * 1000);
-    
-    return () => clearInterval(intervalId);
-  }, [isAutoRefresh, refreshInterval, connectionStatus, loading]);
+    setProgramIdInput('');
+  };
+
+  const removeProgramId = (id: string) => {
+    setProgramIds(programIds.filter(programId => programId !== id));
+  };
 
   // Toggle PDA expansion
   const togglePDA = (address: string) => {
@@ -289,7 +284,7 @@ export const PDAMonitor = () => {
   };
 
   // Render a formatted value for wallet balances
-  const renderFormattedValue = (key: string, value: any) => {
+  const renderFormattedValue = (key: string, value: unknown): string => {
     if (
       key.includes('Balance') && 
       typeof value === 'bigint'
@@ -297,7 +292,7 @@ export const PDAMonitor = () => {
       return `${value.toString()} (${formatCurrencyValue(value)})`;
     }
     
-    return typeof value === 'bigint' ? value.toString() : value;
+    return typeof value === 'bigint' ? value.toString() : String(value);
   };
 
   // Get filtered PDAs
@@ -575,15 +570,15 @@ export const PDAMonitor = () => {
         <div className="mt-6 bg-yellow-900/20 p-4 rounded-md">
           <h4 className="text-yellow-300 font-medium mb-2">Troubleshooting Tips</h4>
           <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>Make sure you're using the correct program IDs</li>
-            <li>Check if the validator is configured with Bolt's World and Registry accounts</li>
+            <li>Make sure you&apos;re using the correct program IDs</li>
+            <li>Check if the validator is configured with Bolt&apos;s World and Registry accounts</li>
             <li>Verify that your tests have created the expected entities and components</li>
             <li>Look for errors in the browser console that might indicate CORS or connectivity issues</li>
             <li>Try running <code className="bg-gray-700 px-1 rounded">anchor test</code> to initialize the registry</li>
           </ul>
           <p className="mt-3 text-sm">
             Our diagnostics tool indicates that the Registry account is properly initialized with 2 wallet accounts and 1 ownership account detected.
-            If you're still having issues, check the test logs for any specific error messages related to account creation.
+            If you&apos;re still having issues, check the test logs for any specific error messages related to account creation.
           </p>
         </div>
       )}

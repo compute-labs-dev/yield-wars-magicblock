@@ -1,21 +1,42 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Pixelify_Sans } from "next/font/google";
 import "./globals.css";
-import { SolanaProvider } from "@/components/providers/SolanaProvider";
+import { Toaster } from "sonner";
+import { Providers } from "@/components/providers/Providers";
+import { ReduxProvider } from '@/components/providers/ReduxProvider';
+import Image from 'next/image';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const pixelifySans = Pixelify_Sans({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-pixelify-sans",
 });
 
 export const metadata: Metadata = {
-  title: "YieldWars",
-  description: "YieldWars - Solana-based strategy game",
+  title: 'Yield Wars | Compute Labs',
+  description:
+    'Compete with others to earn the most yield while supplying demand to the compute market',
+  openGraph: {
+    title: 'Yield Wars | Compute Labs',
+    description:
+      'Compete with others to earn the most yield while supplying demand to the compute market',
+    images: [
+      {
+        url: '/logo-shared.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Compute Labs logo or description',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Yield Wars | Compute Labs',
+    description:
+      'Compete with others to earn the most yield while supplying demand to the compute market',
+    images: ['/logo-shared.jpg'],
+  },
 };
 
 export default function RootLayout({
@@ -24,11 +45,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <SolanaProvider>{children}</SolanaProvider>
+    <html lang="en" className={pixelifySans.className} suppressHydrationWarning>
+      <body className="bg-black h-[100vh] w-full overflow-hidden flex flex-col justify-between">
+        <ReduxProvider>
+          <Providers>
+            <div className="flex items-center justify-center">
+              <Image src={'/yield-wars-logo.svg'} alt="Yield Wars Logo" width={250} height={50} />
+            </div>
+            {children}
+          </Providers>
+        </ReduxProvider>
+        <Toaster />
       </body>
     </html>
   );

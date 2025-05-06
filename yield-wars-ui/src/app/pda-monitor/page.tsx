@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { PDAMonitor } from '@/components/ui/PDAMonitor';
 import { BoltDiagnostics } from '@/components/ui/BoltDiagnostics';
 import { EnhancedTransactionMonitor } from '@/components/ui/EnhancedTransactionMonitor';
@@ -10,21 +11,29 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ClientOnly } from '@/components/ui/ClientOnly';
 
-export default function PDAMonitorPage() {
-  const { connected } = useWallet();
-  const [activeTab, setActiveTab] = useState<'pdas' | 'transactions' | 'diagnostics'>('transactions');
+// Separate client component for tab handling
+const TabHandler = ({ onTabChange }: { onTabChange: (tab: 'pdas' | 'transactions' | 'diagnostics') => void }) => {
   const searchParams = useSearchParams();
   
-  // Handle tab parameter from URL
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'pdas' || tabParam === 'transactions' || tabParam === 'diagnostics') {
-      setActiveTab(tabParam);
+      onTabChange(tabParam);
     }
-  }, [searchParams]);
+  }, [searchParams, onTabChange]);
+
+  return null;
+};
+
+export default function PDAMonitorPage() {
+  const [activeTab, setActiveTab] = useState<'pdas' | 'transactions' | 'diagnostics'>('transactions');
+  const { connected } = useWallet();
 
   return (
     <main className="min-h-screen bg-black p-4 md:p-8">
+      <Suspense fallback={null}>
+        <TabHandler onTabChange={setActiveTab} />
+      </Suspense>
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <h1 className="text-3xl font-bold text-white mb-4 sm:mb-0">YieldWars MagicBlock Monitor</h1>

@@ -1,26 +1,166 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer base {
+  html {
+    font-family: 'Pixelify Sans', system-ui, sans-serif;
+  }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --base-1: 0 0% 0%;
+    --base-2: 0 0% 0%;
+    --base-3: 0 0% 0%;
+    --base-4: 0 0% 0%;
+    --base-5: 0 0% 0%;
+    --base-6: 0 0% 0%;
+    --base-7: 0 0% 0%;
+    --base-8: 0 0% 0%;
+    --base-9: 0 0% 0%;
+    --base-10: 0 0% 0%;
+    --base-11: 0 0% 0%;
+    --base-12: 0 0% 0%;
+    --accent-1: 79.99999999999982 42.85714285714309% 98.62745098039215%;
+    --accent-2: 77.14285714285708 41.176470588235325% 96.66666666666666%;
+    --accent-3: 75 64.00000000000004% 90.19607843137256%;
+    --accent-4: 76.47058823529414 62.962962962962955% 84.11764705882354%;
+    --accent-5: 78.46153846153848 57.5221238938053% 77.84313725490196%;
+    --accent-6: 79.72602739726027 49.65986394557823% 71.17647058823529%;
+    --accent-7: 82.22222222222223 42.85714285714285% 62.94117647058823%;
+    --accent-8: 85.10204081632652 40.16393442622952% 52.156862745098046%;
+    --accent-9: 81.15107913669065 80.34682080924857% 66.07843137254902%;
+    --accent-10: 81.03896103896103 75.49019607843138% 60%;
+    --accent-11: 84.93506493506494 45.029239766081865% 33.529411764705884%;
+    --accent-12: 75 39.130434782608695% 18.03921568627451%;
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 81.03896103896103 75.49019607843138% 60%;
+    --chart-2: 84.93506493506494 45.029239766081865% 33.529411764705884%;
+    --chart-3: 81.15107913669065 80.34682080924857% 66.07843137254902%;
+    --chart-4: 85.10204081632652 40.16393442622952% 52.156862745098046%;
+    --chart-5: 79.72602739726027 49.65986394557823% 71.17647058823529%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --base-1: 0 0% 0%;
+    --base-2: 0 0% 0%;
+    --base-3: 0 0% 0%;
+    --base-4: 0 0% 0%;
+    --base-5: 0 0% 0%;
+    --base-6: 0 0% 100%;
+    --base-7: 0 0% 0%;
+    --base-8: 0 0% 0%;
+    --base-9: 0 0% 100%;
+    --base-10: 0 0% 100%;
+    --base-11: 0 0% 100%;
+    --base-12: 0 0% 100%;
+    --accent-1: 77.14285714285714 22.58064516129032% 6.078431372549019%;
+    --accent-2: 90 23.809523809523807% 8.235294117647058%;
+    --accent-3: 93.33333333333333 28.125000000000007% 12.549019607843137%;
+    --accent-4: 92.30769230769229 30.95238095238096% 16.470588235294116%;
+    --accent-5: 90.9090909090909 32.03883495145631% 20.19607843137255%;
+    --accent-6: 91.5 32.25806451612904% 24.31372549019608%;
+    --accent-7: 90.61224489795919 33.33333333333333% 28.82352941176471%;
+    --accent-8: 89.50819672131146 35.26011560693641% 33.92156862745098%;
+    --accent-9: 81.15107913669065 80.34682080924857% 66.07843137254902%;
+    --accent-10: 78.04195804195804 100% 71.96078431372548%;
+    --accent-11: 79.83471074380165 69.94219653179191% 66.07843137254902%;
+    --accent-12: 79.672131147541 79.22077922077926% 84.90196078431373%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 78.04195804195804 100% 71.96078431372548%;
+    --primary-foreground: 75 39.130434782608695% 18.03921568627451%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 0%;
+    --muted-foreground: 0 0% 100%;
+    --accent: 78.04195804195804 100% 71.96078431372548%;
+    --accent-foreground: 75 39.130434782608695% 18.03921568627451%;
+    --destructive: 252 60.20942408376963% 62.549019607843135%;
+    --destructive-foreground: 249.0909090909091 94.2857142857143% 93.13725490196079%;
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 100%;
+    --chart-1: 78.04195804195804 100% 71.96078431372548%;
+    --chart-2: 79.83471074380165 69.94219653179191% 66.07843137254902%;
+    --chart-3: 81.15107913669065 80.34682080924857% 66.07843137254902%;
+    --chart-4: 89.50819672131146 35.26011560693641% 33.92156862745098%;
+    --chart-5: 91.5 32.25806451612904% 24.31372549019608%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .bg-grid-pattern {
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, rgba(0, 255, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 255, 0, 0.05) 1px, transparent 1px);
+  }
+}
+
+@keyframes cursor-blink {
+  0%, 49% {
+    opacity: 0.7;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s infinite;
+}
+
+/* Add animation keyframes for the ticker */
+@layer utilities {
+  @keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); } /* Scroll by half the width (since content is duplicated) */
+  }
+
+  .animate-marquee {
+    /* Adjust duration for speed, e.g., 60s for slower */
+    animation: marquee 45s linear infinite;
+  }
+
+  /* Pause animation on hover */
+  .group-hover\:pause:hover {
+    animation-play-state: paused;
+  }
 }
