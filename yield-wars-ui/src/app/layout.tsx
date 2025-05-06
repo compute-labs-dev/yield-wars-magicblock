@@ -47,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={pixelifySans.className} suppressHydrationWarning>
-      <body className="bg-black h-[100vh] w-full overflow-hidden flex flex-col justify-between">
+      <body className="bg-black h-[100vh] w-full flex flex-col justify-between">
         <ReduxProvider>
           <Providers>
             <div className="flex items-center justify-center">
