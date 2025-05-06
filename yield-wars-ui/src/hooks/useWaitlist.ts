@@ -15,10 +15,38 @@ interface WaitlistGetApiResponse {
     error?: string;
 }
 
+// Define leaderboard entry structure
+interface LeaderboardEntry {
+    rank: number;
+    ref_code: string;
+    referrals: number;
+}
+
+// Define leaderboard response structure
+interface LeaderboardResponse {
+    success: boolean;
+    entries: LeaderboardEntry[];
+    totalEntries?: number;
+    totalPages?: number;
+    error?: string;
+}
+
+// Define user rank response structure from Google Sheets App Script
+interface UserRankResponse {
+    success: boolean;
+    rank?: number;
+    ref_code?: string;
+    referrals?: number;
+    totalRanked?: number;
+    error?: string;
+}
+
 // Define the structure for the hook's return value
 interface UseWaitlistReturn {
     submitToWaitlist: (email: string, ref_by?: string) => Promise<void>;
     getRefCode: (email: string) => Promise<string | null>;
+    getLeaderboard: (page: number, limit: number) => Promise<LeaderboardResponse>;
+    getUserRank: (refCode: string) => Promise<UserRankResponse>;
     loading: boolean;
     error: string | null;
     success: boolean;
@@ -26,6 +54,10 @@ interface UseWaitlistReturn {
     refCode: string | null;
     getLoading: boolean;
     getError: string | null;
+    leaderboardLoading: boolean;
+    leaderboardError: string | null;
+    userRankLoading: boolean;
+    userRankError: string | null;
 }
 
 // Define the API endpoint URL for the proxy route
@@ -44,6 +76,14 @@ export function useWaitlist(): UseWaitlistReturn {
     // Separate state for the GET request
     const [getLoading, setGetLoading] = useState<boolean>(false);
     const [getError, setGetError] = useState<string | null>(null);
+    
+    // State for leaderboard requests
+    const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
+    const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+    
+    // State for user rank requests
+    const [userRankLoading, setUserRankLoading] = useState<boolean>(false);
+    const [userRankError, setUserRankError] = useState<string | null>(null);
 
     /**
      * Submits the email (and optional referral code) to the waitlist API.
@@ -156,6 +196,132 @@ export function useWaitlist(): UseWaitlistReturn {
         }
         return code;
     }, []);
+    
+    /**
+     * Fetches the leaderboard data with pagination.
+     * @param page - The page number to fetch (1-indexed).
+     * @param limit - The number of entries per page.
+     * @returns The leaderboard data response.
+     */
+    const getLeaderboard = useCallback(async (page: number, limit: number): Promise<LeaderboardResponse> => {
+        setLeaderboardLoading(true);
+        setLeaderboardError(null);
+        
+        try {
+            const targetUrl = `${API_ENDPOINT}?action=getLeaderboard&page=${page}&limit=${limit}`;
+            console.log(`Fetching leaderboard from: ${targetUrl}`);
+            
+            const response = await fetch(targetUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            
+            if (!response.ok) {
+                let errorMsg = `Leaderboard fetch failed: ${response.status} ${response.statusText}`;
+                try {
+                    const errorResult = await response.json();
+                    if (errorResult && errorResult.error) {
+                        errorMsg = errorResult.error;
+                    }
+                } catch (parseError) {
+                    console.error("Leaderboard fetch parse error:", parseError);
+                }
+                throw new Error(errorMsg);
+            }
+            
+            const result = await response.json();
+            console.log("Leaderboard response:", result);
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to fetch leaderboard data.');
+            }
+            
+            return result as LeaderboardResponse;
+        } catch (err: unknown) {
+            const error = err as Error;
+            console.error("Leaderboard fetch error:", error);
+            setLeaderboardError(error.message || 'Failed to fetch leaderboard data.');
+            return {
+                success: false,
+                entries: [],
+                error: error.message || 'Failed to fetch leaderboard data.'
+            };
+        } finally {
+            setLeaderboardLoading(false);
+        }
+    }, []);
+    
+    /**
+     * Fetches the rank for a specific referral code.
+     * @param refCode - The referral code to look up.
+     * @returns The user rank data response.
+     */
+    const getUserRank = useCallback(async (refCode: string): Promise<UserRankResponse> => {
+        setUserRankLoading(true);
+        setUserRankError(null);
+        
+        try {
+            const targetUrl = `${API_ENDPOINT}?action=getUserRank&ref_code=${encodeURIComponent(refCode)}`;
+            console.log(`Looking up user rank for: ${refCode}`);
+            
+            const response = await fetch(targetUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            
+            if (!response.ok) {
+                let errorMsg = `User rank lookup failed: ${response.status} ${response.statusText}`;
+                try {
+                    const errorResult = await response.json();
+                    if (errorResult && errorResult.error) {
+                        errorMsg = errorResult.error;
+                    }
+                } catch (parseError) {
+                    console.error("User rank lookup parse error:", parseError);
+                }
+                throw new Error(errorMsg);
+            }
+            
+            const result = await response.json();
+            console.log("User rank response:", result);
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to fetch user rank data.');
+            }
+            
+            return result as UserRankResponse;
+        } catch (err: unknown) {
+            const error = err as Error;
+            console.error("User rank lookup error:", error);
+            setUserRankError(error.message || 'Failed to fetch user rank data.');
+            return {
+                success: false,
+                error: error.message || 'Failed to fetch user rank data.'
+            };
+        } finally {
+            setUserRankLoading(false);
+        }
+    }, []);
 
-    return { submitToWaitlist, getRefCode, loading, error, success, isExistingUser, refCode, getLoading, getError };
+    return { 
+        submitToWaitlist, 
+        getRefCode, 
+        getLeaderboard,
+        getUserRank,
+        loading, 
+        error, 
+        success, 
+        isExistingUser, 
+        refCode, 
+        getLoading, 
+        getError,
+        leaderboardLoading,
+        leaderboardError,
+        userRankLoading,
+        userRankError
+    };
 } 

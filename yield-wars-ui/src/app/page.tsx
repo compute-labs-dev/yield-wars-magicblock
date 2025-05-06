@@ -63,7 +63,7 @@ export default function Home() {
         {/* Main content on top of grid and globe */}
         <div className="relative z-20 flex flex-col w-full h-full items-center justify-center">
           {/* Terminal positioned with proper spacing */}
-          <div className="w-full flex items-center justify-center mb-12 md:mb-48">
+          <div className="w-full flex items-center justify-center mb-12 md:mb-36">
             <WaitlistTerminal className="w-full" />
           </div>
         </div>

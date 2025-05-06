@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { Providers } from "@/components/providers/Providers";
 import { ReduxProvider } from '@/components/providers/ReduxProvider';
+import { Analytics } from '@vercel/analytics/react';
 import Image from 'next/image';
 
 const pixelifySans = Pixelify_Sans({
@@ -46,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={pixelifySans.className} suppressHydrationWarning>
-      <body className="bg-black h-[100vh] w-full overflow-hidden flex flex-col justify-between">
+      <body className="bg-black h-[100vh] w-full flex flex-col justify-between">
         <ReduxProvider>
           <Providers>
             <div className="flex items-center justify-center">
@@ -56,6 +57,7 @@ export default function RootLayout({
           </Providers>
         </ReduxProvider>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
