@@ -8,7 +8,20 @@ const config: Config = {
         './app/**/*.{js,ts,jsx,tsx,mdx}',
         './layouts/**/*.{js,ts,jsx,tsx,mdx}',
     ],
-
+    safelist: [
+        'bg-black/30',
+        'bg-black/10',
+        'border-yellow-500', 
+        'border-gray-300',
+        'border-amber-700',
+        'text-yellow-400',
+        'text-gray-300',
+        'text-amber-700',
+        'bg-primary-DEFAULT',
+        'border-primary-fog-light',
+        'text-primary-light',
+        'bg-gray-compute',
+    ],
     theme: {
         extend: {
             fontFamily: {
