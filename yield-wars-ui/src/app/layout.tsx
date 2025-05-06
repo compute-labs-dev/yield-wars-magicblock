@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { Providers } from "@/components/providers/Providers";
 import { ReduxProvider } from '@/components/providers/ReduxProvider';
+import { Analytics } from '@vercel/analytics/react';
 import Image from 'next/image';
 
 const pixelifySans = Pixelify_Sans({
@@ -56,6 +57,7 @@ export default function RootLayout({
           </Providers>
         </ReduxProvider>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
