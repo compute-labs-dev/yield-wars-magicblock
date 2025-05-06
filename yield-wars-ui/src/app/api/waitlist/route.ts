@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// --- NEW GET HANDLER ---
+// --- GET HANDLER ---
 export async function GET(req: NextRequest) {
     if (!GOOGLE_SCRIPT_URL) {
         console.error('Google Script URL is not defined in environment variables.');
@@ -80,49 +80,93 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // 1. Get email from query parameters
-        const email = req.nextUrl.searchParams.get('email');
+        const searchParams = req.nextUrl.searchParams;
+        const email = searchParams.get('email');
+        const action = searchParams.get('action');
+        const refCode = searchParams.get('ref_code');
+        const page = searchParams.get('page');
+        const limit = searchParams.get('limit');
 
-        if (!email || typeof email !== 'string') {
-            return NextResponse.json({ success: false, error: 'Missing or invalid email query parameter.' }, { status: 400 });
+        let targetUrl = GOOGLE_SCRIPT_URL;
+        const queryParams = new URLSearchParams();
+
+        if (action === 'getLeaderboard') {
+            queryParams.append('action', 'getLeaderboard');
+            if (page) queryParams.append('page', page);
+            if (limit) queryParams.append('limit', limit);
+        } else if (action === 'getUserRank' && refCode) {
+            queryParams.append('action', 'getUserRank');
+            queryParams.append('ref_code', refCode);
+        } else if (email && !action) { // Original email lookup behavior
+            queryParams.append('email', email);
+        } else {
+            // Pass all parameters for flexibility
+            searchParams.forEach((value, key) => {
+                queryParams.append(key, value);
+            });
         }
 
-        // 2. Construct the target URL for Google Apps Script GET request
-        const targetUrl = `${GOOGLE_SCRIPT_URL}?email=${encodeURIComponent(email)}`;
+        if (queryParams.toString()) {
+            targetUrl += '?' + queryParams.toString();
+        }
 
-        // 3. Forward the GET request to Google Apps Script
+        console.log(`Making API request to: ${targetUrl}`);
         const scriptResponse = await fetch(targetUrl, {
             method: 'GET',
-            // Add a timeout
             signal: AbortSignal.timeout(10000), // 10 seconds timeout
-            // Apps Script doGet redirects by default if not handled correctly,
-            // redirect: 'follow' is usually fetch's default but being explicit is fine.
             redirect: 'follow'
+        }).catch(error => {
+            console.error("API fetch error:", error);
+            throw new Error(`Error connecting to the API: ${error.message}`);
         });
 
-        // 4. Handle the response
+        // Handle the response
         if (!scriptResponse.ok) {
             const errorText = await scriptResponse.text().catch(() => 'Could not read error response.');
             console.error(`Google Script GET request failed: ${scriptResponse.status} ${scriptResponse.statusText}`, errorText);
-            // Don't expose raw script errors directly unless intended
             throw new Error(`Failed to retrieve data from waitlist service.`);
         }
 
-        // Assuming the script returns JSON
-        const scriptResult = await scriptResponse.json();
+        // Try to parse the response as JSON
+        let scriptResult;
+        try {
+            scriptResult = await scriptResponse.json();
+        } catch (error) {
+            console.error("Error parsing JSON response:", error);
+            throw new Error("The API returned an invalid response format");
+        }
 
-        // 5. Return the result to the frontend
+        // Transform the leaderboard response to match our frontend's expected format
+        if (action === 'getLeaderboard' && scriptResult.success && Array.isArray(scriptResult.leaderboard)) {
+            // Map Google Sheet's structure to our frontend's expected structure
+            const transformedResult = {
+                success: scriptResult.success,
+                entries: scriptResult.leaderboard.map((item: any, index: number) => ({
+                    rank: scriptResult.page && scriptResult.limit 
+                        ? (scriptResult.page - 1) * scriptResult.limit + index + 1 
+                        : index + 1,
+                    ref_code: item.ref_code,
+                    referrals: item.referrals
+                })),
+                totalEntries: scriptResult.totalEntries,
+                totalPages: scriptResult.totalPages
+            };
+            return NextResponse.json(transformedResult, {
+                headers: { 'Cache-Control': 'no-store, max-age=0' }
+            });
+        }
+
+        // Return the result
         return NextResponse.json(scriptResult, {
-            headers: {
-                'Cache-Control': 'no-store, max-age=0',
-            }
+            headers: { 'Cache-Control': 'no-store, max-age=0' }
         });
 
     } catch (error: unknown) {
         console.error('API route GET error:', error);
-         if (error instanceof Error && error.name === 'TimeoutError') {
-             return NextResponse.json({ success: false, error: 'Request to waitlist service timed out.' }, { status: 504 });
-         }
+        if (error instanceof Error && error.name === 'TimeoutError') {
+            return NextResponse.json({ success: false, error: 'Request to waitlist service timed out.' }, { status: 504 });
+        }
+        
         // Return a generic error message
         return NextResponse.json({ success: false, error: 'Internal Server Error processing your request.' }, { status: 500 });
     }
