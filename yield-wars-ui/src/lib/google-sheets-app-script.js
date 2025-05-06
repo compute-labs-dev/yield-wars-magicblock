@@ -359,3 +359,5 @@ function doGet(e) {
   }
   return ContentService.createTextOutput(JSON.stringify(response)).setMimeType(ContentService.MimeType.JSON);
 }
+
+console.log(typeof doGet, doPost);

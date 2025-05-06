@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Define the shape of leaderboard entries from Google Sheets
+interface LeaderboardEntry {
+    ref_code: string;
+    referrals: number;
+}
+
 // The URL of your Google Apps Script Web App
 const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
@@ -141,7 +147,7 @@ export async function GET(req: NextRequest) {
             // Map Google Sheet's structure to our frontend's expected structure
             const transformedResult = {
                 success: scriptResult.success,
-                entries: scriptResult.leaderboard.map((item: any, index: number) => ({
+                entries: scriptResult.leaderboard.map((item: LeaderboardEntry, index: number) => ({
                     rank: scriptResult.page && scriptResult.limit 
                         ? (scriptResult.page - 1) * scriptResult.limit + index + 1 
                         : index + 1,

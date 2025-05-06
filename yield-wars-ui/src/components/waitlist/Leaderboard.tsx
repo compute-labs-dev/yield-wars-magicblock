@@ -23,7 +23,7 @@ const DEFAULT_LIMIT = 10;
 export default function Leaderboard() {
   // State for pagination
   const [currentPage, setCurrentPage] = useState(DEFAULT_PAGE);
-  const [entriesPerPage, setEntriesPerPage] = useState(DEFAULT_LIMIT);
+  const entriesPerPage = DEFAULT_LIMIT;
   const [totalPages, setTotalPages] = useState(1);
   
   // State for leaderboard data - initialize as empty array to avoid undefined
