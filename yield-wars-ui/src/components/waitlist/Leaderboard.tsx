@@ -228,14 +228,14 @@ export default function Leaderboard() {
                               }`} 
                             />
                           )}
-                          <span className={entry.rank <= 3 ? 'font-bold' : ''}>{entry.rank}</span>
+                          <span className={`text-[#e1f8d8] ${entry.rank <= 3 ? 'font-bold' : ''}`}>{entry.rank}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-[#e1f8d8]">
                         {entry.ref_code}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right font-medium">
-                        <span className="bg-black/30 px-2 py-1 rounded">{entry.referrals}</span>
+                        <span className="bg-black/30 px-2 py-1 rounded text-[#e1f8d8]">{entry.referrals}</span>
                       </td>
                     </tr>
                   ))
