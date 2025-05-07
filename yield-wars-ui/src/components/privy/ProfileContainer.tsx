@@ -30,14 +30,15 @@ export default function ProfileContainer() {
     // Mock user data
     const user = useMemo(() => {
         return {
-            email: privyUser?.email ?? 'null',
+            email: {
+                address: privyUser?.email?.address || 'null',
+            },
             wallet: privyUser?.wallet?.address ?? 'null',
         }
     }, [
-        privyUser?.email,
+        privyUser?.email?.address,
         privyUser?.wallet?.address,
     ]);
-
     const updateEmail = useCallback(async (email: string) => {
         console.log("Updating email:", email);
         return true;
@@ -71,7 +72,7 @@ export default function ProfileContainer() {
     // Handle email update
     const handleEmailUpdate = async () => {
         if (!emailInput || !user) return;
-        if (emailInput === user.email) {
+        if (emailInput === user.email.address) {
             setEditEmail(false);
             return;
         }
@@ -129,9 +130,9 @@ export default function ProfileContainer() {
                             <div className="flex w-full justify-between items-center">
                                 <p className="flex">Email:</p>
                                 <div className="w-1/2 flex flex-col gap-2">
-                                    {user.email && !editEmail ? (
+                                    {user.email.address && !editEmail ? (
                                         <div className="flex flex-row gap-2 items-center justify-between">
-                                            <span className="text-green-500 font-bold text-left flex">{user.email.toString()}</span>
+                                            <span className="text-green-500 font-bold text-left flex">{user.email.address}</span>
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
@@ -164,22 +165,22 @@ export default function ProfileContainer() {
                                 </div>
                             </div>
                             <Button  
-                                variant="outline" 
+                                variant="secondary" 
                                 onClick={handleLogout}
                                 disabled={!authenticated}
                                 className="flex items-center cursor-pointer"
                             >
                                 {isDisconnecting ? (
-                                    <span className="flex items-center text-white">
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <span className="flex items-center text-muted-foreground">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                         Disconnecting...
                                     </span>
                                 ) : (
-                                    <div className="flex items-center text-white">
-                                        <LogOut className="w-4 h-4 mr-2 text-white" />
+                                    <div className="flex items-center text-muted-foreground">
+                                        <LogOut className="w-4 h-4 mr-2 text-muted-foreground" />
                                         Logout
                                     </div>
                                 )}

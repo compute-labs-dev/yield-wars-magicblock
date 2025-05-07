@@ -15,11 +15,9 @@ export const checkTransaction = async (
 
     // If a transaction is confirmed, generate a new reference and display an alert
     setReference(Keypair.generate().publicKey)
-    window.alert("Transaction Confirmed")
   } catch (e) {
     // If current reference not found, ignore error
     if (e instanceof FindReferenceError) {
-      console.log(reference.toString(), "not confirmed")
       return
     }
 

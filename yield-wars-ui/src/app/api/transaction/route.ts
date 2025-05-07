@@ -43,6 +43,7 @@ async function postImpl(
 
     
     const _signer = Keypair.fromSecretKey(bs58.decode(pk!));
+    console.log('signer', _signer.publicKey.toBase58());
   // Create any transaction
   const transaction = new Transaction({
     feePayer: _signer.publicKey,
@@ -74,7 +75,7 @@ async function postImpl(
     requireAllSignatures: false // account is a missing signature
   });
   const base64 = serializedTransaction.toString('base64');
-
+  console.log('base64', base64);
   // Return the serialized transaction
   return {
     transaction: base64,
@@ -96,7 +97,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { account } = body as PostRequest;
-    
+    console.log('account', account);
+    console.log('body', body);
     if (!account) {
       return NextResponse.json({ error: 'No account provided' }, { status: 400 });
     }
