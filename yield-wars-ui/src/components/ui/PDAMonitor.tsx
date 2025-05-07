@@ -67,7 +67,6 @@ export const PDAMonitor = () => {
     successes: number;
   }>({ attempts: 0, successes: 0 });
 
-  // const { publicKey } = useWallet();
 
   // Test for connection and find working endpoint
   const testConnections = useCallback(async () => {

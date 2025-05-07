@@ -4,13 +4,14 @@ import { Suspense } from 'react';
 import { PDAMonitor } from '@/components/ui/PDAMonitor';
 import { BoltDiagnostics } from '@/components/ui/BoltDiagnostics';
 import { EnhancedTransactionMonitor } from '@/components/ui/EnhancedTransactionMonitor';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useWallet } from '@solana/wallet-adapter-react';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ClientOnly } from '@/components/ui/ClientOnly';
-
+import ProfileContainer from '@/components/privy/ProfileContainer';
+import ProfileIcon from '@/components/privy/ProfileIcon';
+import { PrivyLogin } from '@/components/privy/PrivyLogin';
+import { usePrivy } from '@privy-io/react-auth';
 // Separate client component for tab handling
 const TabHandler = ({ onTabChange }: { onTabChange: (tab: 'pdas' | 'transactions' | 'diagnostics') => void }) => {
   const searchParams = useSearchParams();
@@ -27,7 +28,7 @@ const TabHandler = ({ onTabChange }: { onTabChange: (tab: 'pdas' | 'transactions
 
 export default function PDAMonitorPage() {
   const [activeTab, setActiveTab] = useState<'pdas' | 'transactions' | 'diagnostics'>('transactions');
-  const { connected } = useWallet();
+  const { user } = usePrivy();
 
   return (
     <main className="min-h-screen bg-black p-4 md:p-8">
@@ -39,7 +40,9 @@ export default function PDAMonitorPage() {
           <h1 className="text-3xl font-bold text-white mb-4 sm:mb-0">YieldWars MagicBlock Monitor</h1>
           <div className="flex items-center space-x-3">
             <ClientOnly fallback={<button className="bg-indigo-600 text-white px-4 py-2 rounded-md">Wallet</button>}>
-              <WalletMultiButton />
+              {!user && <PrivyLogin />}
+              {user && <ProfileIcon />}
+              <ProfileContainer />
             </ClientOnly>
           </div>
         </div>
@@ -77,7 +80,7 @@ export default function PDAMonitorPage() {
           </button>
         </div>
         
-        {!connected && activeTab !== 'diagnostics' && (
+        {!user && activeTab !== 'diagnostics' && (
           <div className="bg-gray-800 p-6 rounded-lg mb-6 text-white">
             <p className="text-center">Connect your wallet to interact with the Blockchain Monitor</p>
           </div>

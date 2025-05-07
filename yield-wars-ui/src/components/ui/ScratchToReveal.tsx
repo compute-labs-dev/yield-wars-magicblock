@@ -12,6 +12,7 @@ interface ScratchToRevealProps {
   className?: string;
   onComplete?: () => void;
   gradientColors?: [string, string, string];
+  overlayImage?: string;
 }
 
 export const ScratchToReveal: React.FC<ScratchToRevealProps> = ({
@@ -22,6 +23,7 @@ export const ScratchToReveal: React.FC<ScratchToRevealProps> = ({
   children,
   className,
   gradientColors = ["#A97CF8", "#F38CB8", "#FDCC92"],
+  overlayImage,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isScratching, setIsScratching] = useState(false);
@@ -35,19 +37,31 @@ export const ScratchToReveal: React.FC<ScratchToRevealProps> = ({
     if (canvas && ctx) {
       ctx.fillStyle = "#ccc";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      const gradient = ctx.createLinearGradient(
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
-      gradient.addColorStop(0, gradientColors[0]);
-      gradient.addColorStop(0.5, gradientColors[1]);
-      gradient.addColorStop(1, gradientColors[2]);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (overlayImage) {
+        // Create a new image element
+        const img = new Image();
+        img.onload = () => {
+          // Draw the image to fit the canvas
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = overlayImage;
+      } else {
+        // Fallback to gradient if no image provided
+        const gradient = ctx.createLinearGradient(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        gradient.addColorStop(0, gradientColors[0]);
+        gradient.addColorStop(0.5, gradientColors[1]);
+        gradient.addColorStop(1, gradientColors[2]);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     }
-  }, [gradientColors]);
+  }, [gradientColors, overlayImage]);
 
   const scratch = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
