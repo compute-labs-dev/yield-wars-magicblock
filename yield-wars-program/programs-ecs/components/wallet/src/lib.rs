@@ -2,7 +2,7 @@
 
 use bolt_lang::*;
 
-declare_id!("BXYCAQBizX4Pddjq5XivVEQn9Tbc7NF9zzLd3CSUXysz");
+declare_id!("8nrcTHv976M5VozmZQ86akuyo4MZPjdwctuDjE8wqLXm");
 
 /// Wallet component that tracks currency balances for the player
 ///

@@ -2,7 +2,7 @@
 
 use bolt_lang::*;
 
-declare_id!("Hx47WJJoq9uzSRkZ8o4nRF57W1zpuYwAAc6pWHfbGQAr");
+declare_id!("ET9h3CitgureNw7GRGTCG4hDKGTxtE1kYmPwDB6Xb1ar");
 
 /// Production component that tracks resource generation rates
 ///

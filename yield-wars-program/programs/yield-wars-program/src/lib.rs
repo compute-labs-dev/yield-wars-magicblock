@@ -2,7 +2,7 @@
 
 use bolt_lang::prelude::*;
 
-declare_id!("Gk8azmvjHvYJVJtJfEBSSrnMPsmxSYVwHzdEWRv5aWvf");
+declare_id!("3gnT2CxCTT6QBZHyqtETVnhxfHBK3wccAYqfxq4Xn8PT");
 
 #[program]
 pub mod yield_wars_program {
