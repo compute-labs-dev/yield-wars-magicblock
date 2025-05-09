@@ -426,7 +426,7 @@ describe("yield-wars-program", () => {
       }],
       args: args,
     });
-    
+
     const txSign = await provider.sendAndConfirm(transferSystem.transaction);
     console.log(`Applied economy system to transfer USDC. Signature: ${txSign}`);
 
@@ -469,6 +469,10 @@ describe("yield-wars-program", () => {
       }],
       args: usdcPriceArgs,
     });
+    
+    //simulate the transaction
+    const simulateTx = await provider.simulate(usdcPriceSystem.transaction);
+    console.log("🚨🚨🚨 Simulate Transaction for USDC price component", simulateTx);
     
     await provider.sendAndConfirm(usdcPriceSystem.transaction);
     
@@ -527,6 +531,10 @@ describe("yield-wars-program", () => {
       update_frequency: 3600 // Update once per hour (in seconds)
     };
     
+    console.log("PriceAction system ID:", systemPriceAction.programId.toBase58());
+    console.log("Price component ID:", priceComponent.programId.toBase58());
+    console.log("USDC price args:", initUsdcPriceArgs);
+    
     // Apply the PriceAction system to initialize price
     const initUsdcPriceSystem = await ApplySystem({
       authority: provider.wallet.publicKey,
@@ -540,8 +548,42 @@ describe("yield-wars-program", () => {
       }],
       args: initUsdcPriceArgs,
     });
+
+    console.log("🚨🚨🚨 Apply System for USDC price component", {
+      transaction: initUsdcPriceSystem.transaction,
+      signatures: initUsdcPriceSystem.transaction.signatures,
+      instructions: initUsdcPriceSystem.transaction.instructions,
+    });
     
-    await provider.sendAndConfirm(initUsdcPriceSystem.transaction);
+    try {
+      // First simulate the transaction to see what's happening
+      const simulation = await provider.simulate(initUsdcPriceSystem.transaction);
+      console.log("Transaction simulation result:", {
+        logs: simulation.logs,
+        unitsConsumed: simulation.unitsConsumed,
+        returnData: simulation.returnData
+      });
+
+      const txSign = await provider.sendAndConfirm(initUsdcPriceSystem.transaction, undefined, { skipPreflight: true } );
+      console.log(`Applied price action system to initialize USDC price. Signature: ${txSign}`);
+    } catch (error) {
+      console.error("Failed to initialize USDC price:", error);
+      if (error.logs) {
+        console.error("Error logs:", error.logs);
+      }
+      throw error;
+    }
+    
+    // Verify the price was set correctly
+    const usdcPriceAfterInit = await priceComponent.account.price.fetch(priceComponentPda);
+    console.log("USDC price component after initialization:", {
+      currentPrice: usdcPriceAfterInit.currentPrice.toNumber(),
+      priceInUSD: usdcPriceAfterInit.currentPrice.toNumber() / 1000000,
+      priceType: usdcPriceAfterInit.priceType,
+      updatesEnabled: usdcPriceAfterInit.priceUpdatesEnabled,
+      minPrice: usdcPriceAfterInit.minPrice.toNumber() / 1000000,
+      maxPrice: usdcPriceAfterInit.maxPrice.toNumber() / 1000000
+    });
     
     // Initialize price for BTC with proper parameters
     console.log("Initializing BTC price component with PriceActionSystem...");
@@ -569,8 +611,16 @@ describe("yield-wars-program", () => {
       }],
       args: initBtcPriceArgs,
     });
+
+    console.log("🚨🚨🚨 Apply System for BTC price component", initBtcPriceSystem.transaction.signatures);
     
-    await provider.sendAndConfirm(initBtcPriceSystem.transaction);
+    try {
+      const txSign2 = await provider.sendAndConfirm(initBtcPriceSystem.transaction, undefined, { skipPreflight: true } );
+      console.log(`Applied price action system to initialize BTC price. Signature: ${txSign2}`);
+    } catch (error) {
+      console.error("Failed to initialize BTC price:", error);
+      throw error;
+    }
     
     // Verify prices were set correctly
     const usdcPrice = await priceComponent.account.price.fetch(priceComponentPda);
@@ -629,7 +679,7 @@ describe("yield-wars-program", () => {
     });
     
     await provider.sendAndConfirm(enablePriceSystem.transaction);
-    
+    console.log("🚨🚨🚨 Successfully enabled price updates for USDC price component");
     // Check that price updates are now enabled
     const usdcPriceAfter = await priceComponent.account.price.fetch(priceComponentPda);
     expect(usdcPriceAfter.priceUpdatesEnabled).to.equal(true);

@@ -6,7 +6,7 @@ use solana_program::clock::Clock;
 use solana_program::sysvar::Sysvar;
 use std::cmp;
 
-declare_id!("6e4kZsL68kwjW1Qagd9su8vYQPZGPyS3Mkg4n8Lt5FZU");
+declare_id!("4qjf6jiDRxFwTkKKy6hPS5NP5rKK9KEFCEGQAGFfLgs8");
 
 /// PriceActionSystem handles price component initialization and updates
 ///

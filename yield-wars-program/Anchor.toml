@@ -5,19 +5,19 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-economy = "CqPDvk7AJ7hVYsEvuFUDkZgYjnn5zy5YWEyinkRdFGb1"
-movement = "FUj6R1Pbh7LcKMvP6CLQVuHV5ctpDC99pL5bjHGitjSZ"
-ownership = "4M5dU6my7BmVMoAUYmRa3ZnJRMMQzW7e4Yf32wiPh9wS"
-position = "FG3FpqgB61FFDAjHa9N1Q2cpGqSnYypcaJL6cTK7MtfV"
-price = "DTtX2W21uM3oRdJCSTzmjb5ujvY7i6aA1kbEakeBbrV6"
-price-action = "6e4kZsL68kwjW1Qagd9su8vYQPZGPyS3Mkg4n8Lt5FZU"
-production = "Hx47WJJoq9uzSRkZ8o4nRF57W1zpuYwAAc6pWHfbGQAr"
-resource-production = "3R1a64ew4wk5MnA4Vit16twiP8UvYQ92ajXqxrP7sdBr"
-stakeable = "6ewq3Rkx3c2kLu9qq46fCNS9ZhBshzskCEAgX7WspkVQ"
-upgrade = "E2v1mJyyZJif5podWB85KwBzNbUtE2fgqCLnTXmH9Lqq"
-upgradeable = "dXEvE23Lv9XX5f6ssDbzbGNQmeomC1Mi4U16EoHA3pY"
-wallet = "BXYCAQBizX4Pddjq5XivVEQn9Tbc7NF9zzLd3CSUXysz"
-yield_wars_program = "Gk8azmvjHvYJVJtJfEBSSrnMPsmxSYVwHzdEWRv5aWvf"
+economy = "G1mxe2u3yQEAM1fzqE6F3WL44QbMSnomfLqRyKpHo6Xs"
+movement = "H4z5teSN2Lc4hNyFcTdmWb8EBxyRXUqtBRNV2jdqxFUo"
+ownership = "5tnVfBszH3gaVqXgWJ3cNDenZwU1ThwfBHL323SihDaa"
+position = "BL5C5RUqP8zE8EY9G1268Z5zvuj6SHRcKcDf7i4Pfv9j"
+price = "4kqUinqtCWkiqpxpdC8FjBmwEFSdckpyMStRPwqEQ1U3"
+price-action = "4qjf6jiDRxFwTkKKy6hPS5NP5rKK9KEFCEGQAGFfLgs8"
+production = "ET9h3CitgureNw7GRGTCG4hDKGTxtE1kYmPwDB6Xb1ar"
+resource-production = "3Erv5Y7amyL9MNGy83HAVaQaAohQZF9qC6faHrcE58Ez"
+stakeable = "7kx8P61SHK4uAzxCQuHw25WC9vnKYbWsepSMnES5muT9"
+upgrade = "EtvUjVbFTusfQCsz7kReDepfERFuCnPYBHJRZNWjA6q9"
+upgradeable = "EtUh4iAFPwhUSFPGCjmNdx9M36AiqUHB7QcLNmuyWVox"
+wallet = "8nrcTHv976M5VozmZQ86akuyo4MZPjdwctuDjE8wqLXm"
+yield_wars_program = "3gnT2CxCTT6QBZHyqtETVnhxfHBK3wccAYqfxq4Xn8PT"
 
 [registry]
 url = "https://api.apr.dev"

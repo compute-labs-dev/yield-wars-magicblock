@@ -5,7 +5,7 @@ use upgradeable::Upgradeable;
 use wallet::Wallet;
 use production::Production;
 
-declare_id!("E2v1mJyyZJif5podWB85KwBzNbUtE2fgqCLnTXmH9Lqq");
+declare_id!("EtvUjVbFTusfQCsz7kReDepfERFuCnPYBHJRZNWjA6q9");
 
 /// Upgrade system for handling entity upgrades
 ///
