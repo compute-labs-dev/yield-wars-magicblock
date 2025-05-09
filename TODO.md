@@ -45,15 +45,27 @@
 
 ### Phase 3: System Implementation
 - [x] Implement EconomySystem for handling currency transactions
-- [ ] Implement PriceActionSystem for price initialization and updates
-  - [ ] Create PriceActionSystem using bolt command
-  - [ ] Implement price initialization function
-  - [ ] Implement price update enable/disable function
-  - [ ] Implement price update function based on market dynamics
-  - [ ] Implement price history recording
-  - [ ] Create tests for price initialization and updates
-- [ ] Implement ProductionSystem for resource generation
-- [ ] Implement UpgradeSystem for GPU upgrades
+- [x] Implement PriceActionSystem for price initialization and updates
+  - [x] Create PriceActionSystem using bolt command
+  - [x] Implement price initialization function
+  - [x] Implement price update enable/disable function
+  - [x] Implement price update function based on market dynamics
+  - [x] Implement price history recording
+  - [x] Create tests for price initialization and updates
+- [x] Implement ProductionSystem for resource generation
+  - [x] Create ResourceProductionSystem using bolt command
+  - [x] Implement production initialization function
+  - [x] Implement resource collection function
+  - [x] Implement production activation/deactivation function
+  - [x] Implement operating cost management
+  - [x] Create tests for production operations and resource collection
+- [x] Implement UpgradeSystem for GPU upgrades
+  - [x] Create UpgradeSystem using bolt command
+  - [x] Implement upgrade initialization function
+  - [x] Implement upgrade execution with resource costs
+  - [x] Implement production boost application
+  - [x] Implement parameter update function
+  - [x] Create tests for upgrade operations
 - [ ] Implement StakingSystem for GPU staking
 - [ ] Implement MarketSystem for buying/selling assets
 - [ ] Implement TimerSystem for time-based events
@@ -79,18 +91,27 @@
 - [x] Create test for Stakeable component
 - [x] Create test for Price component
 - [x] Create test for EconomySystem
+- [x] Create test for ResourceProductionSystem
 - [ ] Create comprehensive testing suite
 - [ ] Perform security audits on smart contracts
 - [ ] Optimize for performance and user experience
 
 ### Phase 6: Deployment & Launch
-- [ ] Deploy smart contracts to Solana testnet
+- [ ] Deploy smart contracts to Solana devnet
 - [ ] Conduct beta testing with limited users
 - [ ] Fix issues and optimize based on feedback
 - [ ] Deploy to Solana mainnet
 - [ ] Launch public frontend
 
 ## Working Notes
+
+### Bolt System Implementation 6-Step Plan
+1. Get all necessary context from existing components and system files
+2. Use the bolt system command to create the new system (`bolt system [name]`)
+3. Ensure the style and patterns of the other systems are consistently followed
+4. Add the component dependencies in the system's Cargo.toml file 
+5. Add all the necessary unit tests in yield-wars-program.ts
+6. Update the TODO.md with any progress or learnings
 
 ### Bolt Component Development Workflow
 1. Use `bolt component [name]` to create a new component
@@ -106,6 +127,7 @@
 5. Implement the `execute` function with structured arguments
 6. Run `bolt build` to compile the system
 7. Update tests in `yield-wars-program.ts` to test the system
+8. Run `bolt test` to execute the tests
 
 ### Learning Notes
 - When using the Bolt ECS pattern:
@@ -114,8 +136,11 @@
   - Remove custom constructors if they cause issues with the `bolt_metadata` field
   - Simplify component implementation to data-only structures
   - Put business logic in systems rather than methods on components
-  - Avoid naming systems with the same name as existing components (e.g., "price" component vs "price" system)
+  - **IMPORTANT**: Systems cannot have the exact same name as existing components
+  - This is why we use "resource-production" instead of just "production" and "price-action" instead of "price"
+  - When creating a new system, always check for potential name conflicts with components
   - The PriceActionSystem is named "price-action" to avoid conflict with the "price" component
+  - The ResourceProductionSystem is named "resource-production" to avoid conflict with the "production" component
 
 - Currency Standard:
   - All currency values use 6 decimal places, where 1,000,000 = $1
@@ -143,6 +168,24 @@
     - INITIALIZE = 0: Sets up a price component with initial values
     - ENABLE = 1: Enables price updates for a component
     - UPDATE = 2: Updates a price based on market dynamics
+
+- ResourceProductionSystem design:
+  - Supports four primary operations: Initialize, Collect, SetActive, and UpdateRates
+  - Initialize: Sets up initial production settings including resource rates, efficiency, and operating costs
+  - Collect: Calculates and collects resources based on elapsed time since last collection
+  - SetActive: Activates or deactivates production with automatic timestamp updates
+  - UpdateRates: Modifies production rates and efficiency multipliers
+  - Critical to ensure resources are collected using the same time unit (seconds) but converted properly to hours
+  - Uses efficiency multiplier where 10000 = 100% (same as other percentage values in the system)
+  - Handles operating costs that are deducted from production profits
+  - Deactivates production automatically if operating costs cannot be covered
+  - Maintains the 6-decimal standard for all currency operations
+  - Operation type enum values:
+    - INITIALIZE = 0: Sets up production settings
+    - COLLECT = 1: Collects produced resources
+    - SET_ACTIVE = 2: Activates or deactivates production
+    - UPDATE_RATES = 3: Updates production rates and parameters
+  - System is named "resource-production" to avoid naming conflicts
 
 - Custom enums in Bolt components:
   - Custom enums need to implement serialization/deserialization traits
@@ -306,3 +349,21 @@ Lessons learned:
   - Use a ClientOnly wrapper component to prevent hydration errors
   - Be cautious with Date objects as they can cause hydration mismatches
   - Always provide fallback content for server-rendered components
+
+- UpgradeSystem design:
+  - Supports three primary operations: Initialize, Upgrade, and UpdateParams
+  - Initialize: Sets up initial upgrade settings including levels, costs, and boost amounts
+  - Upgrade: Performs an upgrade if conditions are met (cooldown elapsed, enough funds)
+  - UpdateParams: Modifies upgrade parameters like max level, costs, and boosts
+  - Requires careful coordination between the upgradeable, wallet, and production components
+  - Uses percentage-based boosts where 10000 = 100% (like other percentage values)
+  - Automatically increases costs for subsequent upgrades (using 150% multiplier)
+  - Immediately applies production boosts during upgrades
+  - Updates production component level values to maintain consistency
+  - Uses the same cooldown and timestamp approach as other time-based systems
+  - Enforces proper validation: max level caps, cooldown periods, and sufficient funds
+  - Comprehensive test coverage includes: initialization, successful upgrade, failed upgrade due to insufficient funds, cooldown period validation, and max level restriction
+  - Operation type enum values:
+    - INITIALIZE = 0: Sets up upgrade properties
+    - UPGRADE = 1: Performs an upgrade transaction
+    - UPDATE_PARAMS = 2: Updates upgrade parameters
