@@ -20,50 +20,42 @@ pub struct Ownership {
     #[max_len(32)]
     pub owned_entities: Vec<Pubkey>,
     
-    /// Array of entity types corresponding to each owned entity
+    /// Array of entity types corresponding to owned entities
     #[max_len(32)]
     pub owned_entity_types: Vec<u8>,
+    
+    /// The public key of the entity that owns this entity (if applicable)
+    /// This enables bidirectional ownership tracking
+    pub owner_entity: Option<Pubkey>,
 }
 
-/// Types of entities in the YieldWars game
-#[derive(Copy, Clone, PartialEq, Eq)]
+/// Entity type enum for the Ownership component
 pub enum EntityType {
-    /// Player entity
+    /// Player account (wallet)
     Player = 0,
-    /// GPU mining hardware
+    /// Graphics Processing Unit
     GPU = 1,
-    /// Data center that houses GPUs
+    /// Data Center
     DataCenter = 2,
-    /// Land rights for placing data centers
+    /// Land parcel
     Land = 3,
-    /// Energy contract for reducing costs
+    /// Energy contract
     EnergyContract = 4,
-    /// Unspecified or unknown entity type
+    /// Unknown entity type
     Unknown = 255,
 }
 
 impl EntityType {
-    /// Converts a u8 to an EntityType
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            0 => EntityType::Player,
-            1 => EntityType::GPU,
-            2 => EntityType::DataCenter,
-            3 => EntityType::Land,
-            4 => EntityType::EnergyContract,
-            _ => EntityType::Unknown,
-        }
-    }
-    
-    /// Converts an EntityType to a u8
+    /// Convert entity type to u8
     pub fn to_u8(&self) -> u8 {
-        *self as u8
-    }
-}
-
-impl Default for EntityType {
-    fn default() -> Self {
-        EntityType::Unknown
+        match self {
+            EntityType::Player => 0,
+            EntityType::GPU => 1,
+            EntityType::DataCenter => 2,
+            EntityType::Land => 3,
+            EntityType::EnergyContract => 4,
+            EntityType::Unknown => 255,
+        }
     }
 }
 

@@ -43,6 +43,8 @@ pub mod assign_ownership {
         pub entity_type: u8,
         /// Destination owner entity ID for transfers
         pub destination_entity_id: u64,
+        /// The owner entity's ID (used for bidirectional tracking)
+        pub owner_entity_id: u64,
     }
 
     /// Main execution function for the AssignOwnership system
@@ -85,12 +87,16 @@ pub mod assign_ownership {
                 ownership.owned_entities = Vec::new();
                 ownership.owned_entity_types = Vec::new();
                 
+                // Reset owner_entity to None (this entity is not owned by anyone)
+                ownership.owner_entity = None;
+                
                 msg!("Initialized ownership for entity type: {}", args.owner_type);
             },
             
             // Assign resource to wallet
             1 => {
                 let ownership = &mut ctx.accounts.owner_ownership;
+                let destination_ownership = &mut ctx.accounts.destination_ownership;
                 
                 // Make sure we're assigning to a wallet component
                 if args.owner_type != ownership::EntityType::Player.to_u8() {
@@ -137,6 +143,34 @@ pub mod assign_ownership {
                     ownership.owned_entities.push(entity_pubkey);
                     ownership.owned_entity_types.push(args.entity_type);
                     
+                    // Update the entity's ownership component to point back to the owner
+                    // Check if we're assigning to the entity's ownership component
+                    // The destination_ownership should be the owned entity's component
+                    // No need to check type, just update the bidirectional relationship
+                    let wallet_entity_id = if args.owner_entity_id != 0 {
+                        args.owner_entity_id
+                    } else {
+                        // Fallback - use program ID hash as u64
+                        let program_id_bytes = ctx.program_id.to_bytes();
+                        let mut entity_id: u64 = 0;
+                        // Use first 8 bytes of program ID to create u64
+                        if program_id_bytes.len() >= 8 {
+                            entity_id = u64::from_le_bytes([
+                                program_id_bytes[0], program_id_bytes[1], 
+                                program_id_bytes[2], program_id_bytes[3],
+                                program_id_bytes[4], program_id_bytes[5],
+                                program_id_bytes[6], program_id_bytes[7],
+                            ]);
+                        }
+                        entity_id
+                    };
+                    
+                    let owner_entity_pubkey = entity_id_to_pubkey(wallet_entity_id);
+                    
+                    // Always update the entity's owner reference in destination_ownership
+                    destination_ownership.owner_entity = Some(owner_entity_pubkey);
+                    msg!("Updated entity ownership with owner ID {}, pubkey: {}", wallet_entity_id, owner_entity_pubkey);
+                    
                     msg!("Assigned entity {} of type {} to wallet. Current owned entity count: {}", 
                         args.entity_id, args.entity_type, ownership.owned_entities.len());
                     
@@ -156,6 +190,7 @@ pub mod assign_ownership {
             // Remove resource ownership
             2 => {
                 let ownership = &mut ctx.accounts.owner_ownership;
+                let destination_ownership = &mut ctx.accounts.destination_ownership;
                 
                 // Convert entity ID to Pubkey
                 let entity_pubkey = entity_id_to_pubkey(args.entity_id);
@@ -196,6 +231,13 @@ pub mod assign_ownership {
                     ownership.owned_entities.pop();
                     if !ownership.owned_entity_types.is_empty() {
                         ownership.owned_entity_types.pop();
+                    }
+                    
+                    // Update the entity's ownership if it matches
+                    if destination_ownership.owner_type == entity_type {
+                        // Clear the owner reference
+                        destination_ownership.owner_entity = None;
+                        msg!("Cleared owner reference from entity");
                     }
                     
                     msg!("Removed entity {} from ownership", args.entity_id);
@@ -255,6 +297,9 @@ pub mod assign_ownership {
                     msg!("Before transfer - Source has {} entities, Destination has {} entities", 
                          source_ownership.owned_entities.len(), 
                          destination_ownership.owned_entities.len());
+                    
+                    // Update the entity's owner reference
+                    // (This would be handled by a subsequent call that updates the actual entity component)
                     
                     // Remove from source using swap and pop
                     let last_index = source_ownership.owned_entities.len() - 1;

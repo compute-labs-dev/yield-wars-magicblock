@@ -82,6 +82,8 @@ pub mod market {
         pub buyer_entity_id: u64,
         /// Listing ID 
         pub listing_id: u64,
+        /// Current time
+        pub current_time: u64,
     }
 
     /// Main execution function for the Market system
@@ -122,8 +124,8 @@ pub mod market {
         // Check if an entity (seller/buyer) owns a specific asset
         fn check_entity_owns_asset(
             ownership: &ownership::Ownership,
-            _entity_id: u64,   // Only used for debugging log
-            _entity_type: u8,   // Only used for debugging log
+            entity_id: u64,   // Entity ID of owner to check against
+            _entity_type: u8,   // Entity type of owner
             asset_id: u64,
             asset_type: u8
         ) -> bool {
@@ -131,7 +133,22 @@ pub mod market {
             let asset_pubkey = asset_id_to_pubkey(asset_id);
             
             msg!("Checking if entity owns asset: ID={}, type={}, pubkey={}", asset_id, asset_type, asset_pubkey);
-            msg!("Ownership has {} entities", ownership.owned_entities.len());
+            
+            // First, check directly if the owner's entity ID matches the asset's owner field
+            // This is a more direct path with the new bidirectional ownership tracking
+            if ownership.owner_type == asset_type {
+                if let Some(owner_pubkey) = ownership.owner_entity {
+                    let expected_owner_pubkey = entity_id_to_pubkey(entity_id);
+                    if owner_pubkey == expected_owner_pubkey {
+                        msg!("Ownership verified by direct owner reference check");
+                        return true;
+                    }
+                }
+            }
+            
+            // Fallback to traditional checking method by iterating through the owner's list
+            // This adds robustness if the owner field wasn't properly set
+            msg!("Checking using owned entities list. Ownership has {} entities", ownership.owned_entities.len());
             
             // Iterate through owned entities to find the matching asset
             for i in 0..ownership.owned_entities.len() {
@@ -140,7 +157,7 @@ pub mod market {
                     let owned_type = ownership.owned_entity_types[i];
                     
                     if owned_type == asset_type && owned_entity == asset_pubkey {
-                        msg!("Found matching asset in ownership!");
+                        msg!("Found matching asset in ownership records!");
                         return true;
                     }
                 }
@@ -154,6 +171,14 @@ pub mod market {
         fn remove_asset(ownership: &mut ownership::Ownership, asset_type: u8, asset_id: u64) -> Result<()> {
             let asset_id_pubkey = asset_id_to_pubkey(asset_id);
             msg!("Attempting to remove asset: ID={}, type={}", asset_id, asset_type);
+            
+            // Check if this is the owned asset itself
+            if ownership.owner_type == asset_type {
+                // Reset owner reference
+                ownership.owner_entity = None;
+                msg!("Cleared owner reference from asset");
+                return Ok(());
+            }
             
             // Find the index of the asset in the ownership arrays
             let mut asset_index = None;
@@ -194,13 +219,21 @@ pub mod market {
         }
 
         // Add an asset to an entity's ownership
-        fn add_asset(ownership: &mut ownership::Ownership, asset_type: u8, asset_id: u64) -> Result<()> {
+        fn add_asset(ownership: &mut ownership::Ownership, asset_type: u8, asset_id: u64, owner_entity_id: u64) -> Result<()> {
             let asset_id_pubkey = asset_id_to_pubkey(asset_id);
             msg!("Attempting to add asset: ID={}, type={}", asset_id, asset_type);
             
-            // Check if the asset is already in ownership - using 0 for entity_id and entity_type here
-            // as we're checking if the asset itself is already owned, not by a specific entity
-            if check_entity_owns_asset(ownership, 0, 0, asset_id, asset_type) {
+            // Check if this is the asset itself receiving ownership information
+            if ownership.owner_type == asset_type {
+                // Set owner reference
+                let owner_pubkey = entity_id_to_pubkey(owner_entity_id);
+                ownership.owner_entity = Some(owner_pubkey);
+                msg!("Set asset's owner to: {}", owner_pubkey);
+                return Ok(());
+            }
+            
+            // Check if the asset is already in ownership
+            if check_entity_owns_asset(ownership, owner_entity_id, ownership.owner_type, asset_id, asset_type) {
                 msg!("Asset already exists in ownership, cannot add");
                 return Err(MarketError::InvalidListing.into());
             }
@@ -216,7 +249,7 @@ pub mod market {
         match args.operation_type {
             // Create a listing for an asset
             0 => {
-                let seller_ownership = &mut ctx.accounts.seller_ownership;
+                let _seller_ownership = &mut ctx.accounts.seller_ownership;
                 let price_component = &mut ctx.accounts.price;
                 
                 // Validate the price is reasonable
@@ -351,7 +384,7 @@ pub mod market {
                 
                 // Transfer ownership of the asset
                 remove_asset(seller_ownership, args.asset_type, args.asset_id)?;
-                add_asset(buyer_ownership, args.asset_type, args.asset_id)?;
+                add_asset(buyer_ownership, args.asset_type, args.asset_id, args.buyer_entity_id)?;
                 
                 // Mark the listing as sold
                 price_component.price_updates_enabled = false;
@@ -404,7 +437,7 @@ pub mod market {
             
             // Update a listing's price
             3 => {
-                let seller_ownership = &mut ctx.accounts.seller_ownership;
+                let _seller_ownership = &mut ctx.accounts.seller_ownership;
                 let price_component = &mut ctx.accounts.price;
                 
                 // Verify the listing exists and is active
@@ -442,12 +475,7 @@ pub mod market {
                 price_component.current_price = args.price;
                 
                 // Update the last update time
-                price_component.last_update_time = i64::try_from(
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs()
-                ).unwrap_or(0);
+                price_component.last_update_time = args.current_time as i64;
                 
                 msg!("Listing updated with new price for asset type {} with ID {}, new price: {}", 
                      args.asset_type, args.asset_id, args.price);
@@ -466,7 +494,7 @@ pub mod market {
                 
                 // Transfer ownership of the asset
                 remove_asset(seller_ownership, args.asset_type, args.asset_id)?;
-                add_asset(buyer_ownership, args.asset_type, args.asset_id)?;
+                add_asset(buyer_ownership, args.asset_type, args.asset_id, args.buyer_entity_id)?;
                 
                 // Log the transfer with descriptive asset type
                 let asset_type_name = match args.asset_type {
