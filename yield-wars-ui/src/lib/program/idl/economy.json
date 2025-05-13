@@ -1,0 +1,359 @@
+{
+  "address": "G1mxe2u3yQEAM1fzqE6F3WL44QbMSnomfLqRyKpHo6Xs",
+  "metadata": {
+    "name": "economy",
+    "version": "0.2.2",
+    "spec": "0.1.0",
+    "description": "Created with Bolt"
+  },
+  "docs": [
+    "EconomySystem handles all currency transactions and exchanges",
+    "",
+    "This system allows entities to:",
+    "- Transfer currency between wallets",
+    "- Convert between different currencies",
+    "- Apply transaction fees",
+    "- Purchase game assets with currency"
+  ],
+  "instructions": [
+    {
+      "name": "bolt_execute",
+      "discriminator": [
+        75,
+        206,
+        62,
+        210,
+        52,
+        215,
+        104,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "authority"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": "bytes"
+        }
+      ],
+      "returns": {
+        "vec": "bytes"
+      }
+    },
+    {
+      "name": "execute",
+      "docs": [
+        "Main execution function for the EconomySystem"
+      ],
+      "discriminator": [
+        130,
+        221,
+        242,
+        154,
+        13,
+        193,
+        189,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "source_wallet"
+        },
+        {
+          "name": "destination_wallet"
+        },
+        {
+          "name": "source_price"
+        },
+        {
+          "name": "destination_price"
+        },
+        {
+          "name": "authority"
+        }
+      ],
+      "args": [
+        {
+          "name": "_args",
+          "type": "bytes"
+        }
+      ],
+      "returns": {
+        "vec": "bytes"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Price",
+      "discriminator": [
+        50,
+        107,
+        127,
+        61,
+        83,
+        36,
+        39,
+        75
+      ]
+    },
+    {
+      "name": "Wallet",
+      "discriminator": [
+        24,
+        89,
+        59,
+        139,
+        81,
+        154,
+        232,
+        95
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds for transaction"
+    },
+    {
+      "code": 6001,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow in calculation"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidCurrencyType",
+      "msg": "Invalid currency type specified"
+    },
+    {
+      "code": 6003,
+      "name": "SameCurrencyExchange",
+      "msg": "Cannot exchange between the same currency"
+    },
+    {
+      "code": 6004,
+      "name": "PriceUpdatesDisabled",
+      "msg": "Price updates are currently disabled"
+    },
+    {
+      "code": 6005,
+      "name": "CurrencyPriceMismatch",
+      "msg": "Currency type does not match price component"
+    },
+    {
+      "code": 6006,
+      "name": "ExchangeAmountTooSmall",
+      "msg": "Exchange amount is too small"
+    }
+  ],
+  "types": [
+    {
+      "name": "BoltMetadata",
+      "docs": [
+        "Metadata for the component."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Price",
+      "docs": [
+        "Price component that tracks market values and price history",
+        "",
+        "This component is attached to entities that have market value, such as currencies and assets.",
+        "It tracks current price, historical prices, and price change parameters.",
+        "Price changes can be influenced by market activity and time-based fluctuations."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current_price",
+            "docs": [
+              "Current price in USDC (base currency)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "previous_price",
+            "docs": [
+              "Previous price for calculating price change"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_update_time",
+            "docs": [
+              "Timestamp of last price update"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "min_price",
+            "docs": [
+              "Minimum price allowed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_price",
+            "docs": [
+              "Maximum price allowed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "volatility",
+            "docs": [
+              "Volatility factor (100 = 1%, 1000 = 10%, etc.)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "update_frequency",
+            "docs": [
+              "Price update frequency in seconds"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "price_type",
+            "docs": [
+              "Type of the priced entity (uses same enum as Ownership component)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "price_updates_enabled",
+            "docs": [
+              "Whether price updates are currently enabled"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "price_trend",
+            "docs": [
+              "Price trend direction (-100 to +100, where 0 is neutral)"
+            ],
+            "type": "i8"
+          },
+          {
+            "name": "price_history",
+            "docs": [
+              "Array of historical prices (most recent first, max 24 entries)"
+            ],
+            "type": {
+              "array": [
+                "u64",
+                24
+              ]
+            }
+          },
+          {
+            "name": "history_index",
+            "docs": [
+              "Index for circular price history array"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "supply_factor",
+            "docs": [
+              "Supply factor affecting price (10000 = neutral)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "demand_factor",
+            "docs": [
+              "Demand factor affecting price (10000 = neutral)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Wallet",
+      "docs": [
+        "Wallet component that tracks currency balances for the player",
+        "",
+        "This component stores the balances of different cryptocurrencies",
+        "that a player can own in the YieldWars game. It tracks:",
+        "- USDC: Base currency used for most transactions",
+        "- BTC: Bitcoin, a tradable cryptocurrency with fluctuating value",
+        "- ETH: Ethereum, a tradable cryptocurrency with fluctuating value",
+        "- SOL: Solana, a tradable cryptocurrency with fluctuating value",
+        "- AiFi: Special token produced by GPUs, used for advanced upgrades"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdc_balance",
+            "docs": [
+              "Balance of USDC (stablecoin), the base currency"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_balance",
+            "docs": [
+              "Balance of Bitcoin (BTC)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "eth_balance",
+            "docs": [
+              "Balance of Ethereum (ETH)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "sol_balance",
+            "docs": [
+              "Balance of Solana (SOL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "aifi_balance",
+            "docs": [
+              "Balance of AiFi tokens"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

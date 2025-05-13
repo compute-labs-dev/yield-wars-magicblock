@@ -1,0 +1,381 @@
+{
+  "address": "ET9h3CitgureNw7GRGTCG4hDKGTxtE1kYmPwDB6Xb1ar",
+  "metadata": {
+    "name": "production",
+    "version": "0.2.2",
+    "spec": "0.1.0",
+    "description": "Created with Bolt"
+  },
+  "instructions": [
+    {
+      "name": "destroy",
+      "discriminator": [
+        157,
+        40,
+        96,
+        3,
+        135,
+        203,
+        143,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "receiver",
+          "writable": true
+        },
+        {
+          "name": "entity"
+        },
+        {
+          "name": "component",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": []
+              },
+              {
+                "kind": "account",
+                "path": "entity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "component_program_data"
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": []
+              },
+              {
+                "kind": "account",
+                "path": "entity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entity"
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update",
+      "discriminator": [
+        219,
+        200,
+        88,
+        176,
+        158,
+        63,
+        253,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "bolt_component",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "update_with_session",
+      "discriminator": [
+        221,
+        55,
+        212,
+        141,
+        57,
+        85,
+        61,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "bolt_component",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "session_token"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Entity",
+      "discriminator": [
+        46,
+        157,
+        161,
+        161,
+        254,
+        46,
+        79,
+        24
+      ]
+    },
+    {
+      "name": "Production",
+      "discriminator": [
+        141,
+        81,
+        95,
+        126,
+        26,
+        136,
+        101,
+        92
+      ]
+    },
+    {
+      "name": "SessionToken",
+      "discriminator": [
+        233,
+        4,
+        115,
+        14,
+        46,
+        21,
+        1,
+        15
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ProductionInactive",
+      "msg": "Production is currently inactive"
+    },
+    {
+      "code": 6001,
+      "name": "CollectionCooldown",
+      "msg": "Collection cooldown period has not elapsed"
+    },
+    {
+      "code": 6002,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow in production calculation"
+    }
+  ],
+  "types": [
+    {
+      "name": "BoltMetadata",
+      "docs": [
+        "Metadata for the component."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Entity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Production",
+      "docs": [
+        "Production component that tracks resource generation rates",
+        "",
+        "This component is used to define the production capabilities of entities in the YieldWars game,",
+        "such as GPUs that produce USDC and AiFi tokens. It includes:",
+        "- Production rates per hour for USDC and AiFi",
+        "- Last collection timestamp to calculate uncollected resources",
+        "- Efficiency multiplier that can be affected by upgrades, data centers, or energy contracts"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdc_per_hour",
+            "docs": [
+              "USDC tokens produced per hour"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "aifi_per_hour",
+            "docs": [
+              "AiFi tokens produced per hour"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_collection_time",
+            "docs": [
+              "Timestamp of the last resource collection (Unix timestamp)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "efficiency_multiplier",
+            "docs": [
+              "Efficiency multiplier applied to production rates (10000 = 100%)",
+              "This can be increased by:",
+              "- Placing GPUs in data centers",
+              "- Purchasing energy contracts",
+              "- Applying upgrades"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "producer_type",
+            "docs": [
+              "Type of production entity (uses same enum as Ownership component)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "level",
+            "docs": [
+              "Current level of the production entity (affects base rates)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether production is currently active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "operating_cost",
+            "docs": [
+              "Operating cost per hour in USDC"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "session_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

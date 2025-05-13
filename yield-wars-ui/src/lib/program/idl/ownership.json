@@ -1,0 +1,342 @@
+{
+  "address": "5tnVfBszH3gaVqXgWJ3cNDenZwU1ThwfBHL323SihDaa",
+  "metadata": {
+    "name": "ownership",
+    "version": "0.2.2",
+    "spec": "0.1.0",
+    "description": "Created with Bolt"
+  },
+  "instructions": [
+    {
+      "name": "destroy",
+      "discriminator": [
+        157,
+        40,
+        96,
+        3,
+        135,
+        203,
+        143,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "receiver",
+          "writable": true
+        },
+        {
+          "name": "entity"
+        },
+        {
+          "name": "component",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": []
+              },
+              {
+                "kind": "account",
+                "path": "entity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "component_program_data"
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": []
+              },
+              {
+                "kind": "account",
+                "path": "entity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entity"
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update",
+      "discriminator": [
+        219,
+        200,
+        88,
+        176,
+        158,
+        63,
+        253,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "bolt_component",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "update_with_session",
+      "discriminator": [
+        221,
+        55,
+        212,
+        141,
+        57,
+        85,
+        61,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "bolt_component",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "instruction_sysvar_account",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "session_token"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Entity",
+      "discriminator": [
+        46,
+        157,
+        161,
+        161,
+        254,
+        46,
+        79,
+        24
+      ]
+    },
+    {
+      "name": "Ownership",
+      "discriminator": [
+        41,
+        84,
+        101,
+        206,
+        145,
+        175,
+        88,
+        65
+      ]
+    },
+    {
+      "name": "SessionToken",
+      "discriminator": [
+        233,
+        4,
+        115,
+        14,
+        46,
+        21,
+        1,
+        15
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TooManyEntities",
+      "msg": "Cannot add more entities than the maximum allowed"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidEntityIndex",
+      "msg": "Entity index out of bounds"
+    },
+    {
+      "code": 6002,
+      "name": "NotOwned",
+      "msg": "Entity is not owned by this owner"
+    }
+  ],
+  "types": [
+    {
+      "name": "BoltMetadata",
+      "docs": [
+        "Metadata for the component."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Entity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ownership",
+      "docs": [
+        "Ownership component that tracks which entities own other entities",
+        "",
+        "This component is used to establish ownership relationships between entities in the YieldWars game.",
+        "For example, a player entity can own multiple GPU entities, Data Centers, Land Rights, etc.",
+        "The component stores a list of the public keys of owned entities along with their types."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner_type",
+            "docs": [
+              "The type of the entity this ownership component is attached to"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "owned_entities",
+            "docs": [
+              "Array of owned entity public keys"
+            ],
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "owned_entity_types",
+            "docs": [
+              "Array of entity types corresponding to each owned entity"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "session_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

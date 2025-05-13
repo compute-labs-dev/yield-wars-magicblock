@@ -3,7 +3,6 @@ import { Pixelify_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { Providers } from "@/components/providers/Providers";
-import { ReduxProvider } from '@/components/providers/ReduxProvider';
 import { Analytics } from '@vercel/analytics/react';
 import Image from 'next/image';
 
@@ -48,14 +47,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={pixelifySans.className} suppressHydrationWarning>
       <body className="bg-black h-[100vh] w-full flex flex-col justify-between">
-        <ReduxProvider>
-          <Providers>
-            <div className="flex items-center justify-center">
-              <Image src={'/yield-wars-logo.svg'} alt="Yield Wars Logo" width={250} height={50} />
-            </div>
-            {children}
-          </Providers>
-        </ReduxProvider>
+        <Providers>
+          <div className="flex items-center justify-center">
+            <Image src={'/yield-wars-logo.svg'} alt="Yield Wars Logo" width={250} height={50} />
+          </div>
+          {children}
+        </Providers>
         <Toaster />
         <Analytics />
       </body>
