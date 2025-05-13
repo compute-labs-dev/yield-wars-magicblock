@@ -5,7 +5,9 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+assign-ownership = "AFiHj9n9khQjMG1U4dSoVVD7KLnVtgrcgvtfZcZHR2L3"
 economy = "CqPDvk7AJ7hVYsEvuFUDkZgYjnn5zy5YWEyinkRdFGb1"
+market = "EE1nNQ7zsRFqnR5E6EUDjjpMMmsa1Y9NzX1ukQ2ks8WC"
 movement = "FUj6R1Pbh7LcKMvP6CLQVuHV5ctpDC99pL5bjHGitjSZ"
 ownership = "4M5dU6my7BmVMoAUYmRa3ZnJRMMQzW7e4Yf32wiPh9wS"
 position = "FG3FpqgB61FFDAjHa9N1Q2cpGqSnYypcaJL6cTK7MtfV"
@@ -14,6 +16,7 @@ price-action = "6e4kZsL68kwjW1Qagd9su8vYQPZGPyS3Mkg4n8Lt5FZU"
 production = "Hx47WJJoq9uzSRkZ8o4nRF57W1zpuYwAAc6pWHfbGQAr"
 resource-production = "3R1a64ew4wk5MnA4Vit16twiP8UvYQ92ajXqxrP7sdBr"
 stakeable = "6ewq3Rkx3c2kLu9qq46fCNS9ZhBshzskCEAgX7WspkVQ"
+staking = "35e44vDYJby25GT5gvgnAhDDG1gs2LgBgDFxudBBpq1K"
 upgrade = "E2v1mJyyZJif5podWB85KwBzNbUtE2fgqCLnTXmH9Lqq"
 upgradeable = "dXEvE23Lv9XX5f6ssDbzbGNQmeomC1Mi4U16EoHA3pY"
 wallet = "BXYCAQBizX4Pddjq5XivVEQn9Tbc7NF9zzLd3CSUXysz"

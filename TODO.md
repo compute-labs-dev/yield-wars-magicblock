@@ -66,8 +66,20 @@
   - [x] Implement production boost application
   - [x] Implement parameter update function
   - [x] Create tests for upgrade operations
-- [ ] Implement StakingSystem for GPU staking
-- [ ] Implement MarketSystem for buying/selling assets
+- [x] Implement StakingSystem for GPU staking
+  - [x] Create StakingSystem using bolt command
+  - [x] Implement staking initialization function
+  - [x] Implement stake execution function
+  - [x] Implement unstake function with potential penalties
+  - [x] Implement rewards collection function
+  - [x] Implement parameter update function
+- [x] Implement MarketSystem for buying/selling assets
+  - [x] Create MarketSystem using bolt command
+  - [x] Implement listing creation function
+  - [x] Implement asset purchase function
+  - [x] Implement listing cancellation function
+  - [x] Implement listing update function
+  - [x] Implement asset transfer function
 - [ ] Implement TimerSystem for time-based events
 
 ### Phase 4: Frontend Development
@@ -86,12 +98,18 @@
   - [x] Implement transaction logs parser for Bolt ECS framework
 - [x] Create test for Wallet component
 - [x] Create test for Ownership component
+  - [x] Implement AssignOwnership system for linking resources to wallets
+  - [x] Create tests for assigning, transferring, and removing ownership
+  - [x] Implement robust error handling and validation
 - [x] Create test for Production component
 - [x] Create test for Upgradeable component
 - [x] Create test for Stakeable component
 - [x] Create test for Price component
 - [x] Create test for EconomySystem
 - [x] Create test for ResourceProductionSystem
+- [x] Create test for UpgradeSystem
+- [x] Create test for StakingSystem
+- [ ] Create test for MarketSystem - something not working properly - TODO!
 - [ ] Create comprehensive testing suite
 - [ ] Perform security audits on smart contracts
 - [ ] Optimize for performance and user experience
@@ -367,3 +385,65 @@ Lessons learned:
     - INITIALIZE = 0: Sets up upgrade properties
     - UPGRADE = 1: Performs an upgrade transaction
     - UPDATE_PARAMS = 2: Updates upgrade parameters
+
+- StakingSystem design:
+  - Supports five primary operations: Initialize, Stake, Unstake, CollectRewards, and UpdateParams
+  - Initialize: Sets up initial staking settings including reward rates, minimum staking periods, and penalty rates
+  - Stake: Marks an entity as staked and pauses regular production
+  - Unstake: Calculates rewards based on staking duration and applies penalties for early unstaking
+  - CollectRewards: Transfers accumulated rewards to the user's wallet
+  - UpdateParams: Modifies staking parameters such as reward rates and penalty calculations
+  - Requires coordination between the stakeable, wallet, and production components
+  - Uses percentage-based calculations where 10000 = 100% (consistent with other systems)
+  - Handles time-based calculations for staking duration using Unix timestamps
+  - Automatically pauses regular production while an entity is staked
+  - Implements early unstaking penalties based on minimum staking periods
+  - Maintains accumulated rewards until explicitly collected
+  - Enforces proper validation: staking status, reward availability, and claim permissions
+  - Tests require careful handling of numeric arguments (using direct number values instead of component values)
+  - Operation type enum values:
+    - INITIALIZE = 0: Sets up staking properties
+    - STAKE = 1: Stakes an entity
+    - UNSTAKE = 2: Unstakes an entity with reward calculations
+    - COLLECT_REWARDS = 3: Collects accumulated staking rewards
+    - UPDATE_PARAMS = 4: Updates staking parameters
+
+- MarketSystem design:
+  - Supports five primary operations: CreateListing, PurchaseAsset, CancelListing, UpdateListing, and TransferAsset
+  - CreateListing: Creates a new marketplace listing for an asset with a specified price
+  - PurchaseAsset: Transfers ownership and handles payment for a marketplace listing
+  - CancelListing: Removes a listing from the marketplace without completing a sale
+  - UpdateListing: Modifies price or other parameters of an existing listing
+  - TransferAsset: Directly transfers asset ownership between entities without payment
+  - Requires coordination between wallet, ownership, and price components
+  - Uses the Price component to track listing details including status
+  - Leverages the AssignOwnership system for entity ownership transfers
+  - Enforces proper validation: ownership verification, sufficient funds, and active listings
+  - Handles different payment methods using the currency_type field
+  - Updates listing status using the price component's priceType field
+  - Maintains listing history using the price component's price history features
+  - Operation type enum values:
+    - CREATE_LISTING = 0: Creates a new marketplace listing
+    - PURCHASE_ASSET = 1: Completes a purchase transaction
+    - CANCEL_LISTING = 2: Removes a listing from the marketplace
+    - UPDATE_LISTING = 3: Updates an existing listing's parameters
+    - TRANSFER_ASSET = 4: Directly transfers ownership without payment
+
+- AssignOwnership system design:
+  - Supports four primary operations: Initialize, AssignToWallet, RemoveOwnership, and TransferOwnership
+  - Initialize: Sets up the ownership component with proper type and empty arrays
+  - AssignToWallet: Adds an entity ID to the owner's list of owned entities
+  - RemoveOwnership: Removes an entity ID from the owner's owned entity list
+  - TransferOwnership: Transfers ownership from one entity to another
+  - Uses two arrays to track owned entities: ownedEntities (IDs) and ownedEntityTypes (types)
+  - Entity IDs are controlled by the game logic rather than being Solana public keys
+  - Maintains proper synchronization between owned entity IDs and their types
+  - Enforces validation: ownership verification, entity existence, and proper entity types
+  - Handles errors gracefully when entities are not found or already owned
+  - Critical for marketplace operations and resource management
+  - Works with different entity types (PLAYER, GPU, DATA_CENTER, etc.)
+  - Operation type enum values:
+    - INITIALIZE = 0: Sets up ownership component with initial values
+    - ASSIGN_TO_WALLET = 1: Adds an entity to an owner's possession
+    - REMOVE_OWNERSHIP = 2: Removes an owned entity
+    - TRANSFER_OWNERSHIP = 3: Transfers an entity between owners
