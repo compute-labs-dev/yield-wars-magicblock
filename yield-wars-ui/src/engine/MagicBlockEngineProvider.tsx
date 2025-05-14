@@ -1,7 +1,8 @@
 import * as React from "react";
-import { WalletProvider, useWallet } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
 import { MagicBlockEngine } from "./MagicBlockEngine";
+import { usePrivy } from '@privy-io/react-auth';
+import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solana';
 
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
@@ -21,9 +22,9 @@ export function MagicBlockEngineProvider({
   children: React.ReactNode;
 }) {
   return (
-    <WalletProvider wallets={[]} autoConnect>
-      <MagicBlockEngineProviderInner>{children}</MagicBlockEngineProviderInner>
-    </WalletProvider>
+    <MagicBlockEngineProviderInner>
+      {children}
+    </MagicBlockEngineProviderInner>
   );
 }
 
@@ -32,35 +33,59 @@ function MagicBlockEngineProviderInner({
 }: {
   children: React.ReactNode;
 }) {
-  const walletContext = useWallet();
+  const [isClient, setIsClient] = React.useState(false);
+  const [sessionKey, setSessionKey] = React.useState<Keypair | null>(null);
+  const privy = usePrivy();
+  const solanaWallets = useSolanaWallets();
+  const signTransaction = useSignTransaction();
 
-  const engine = React.useMemo(() => {
-    let sessionKey;
-
-    // Check if we're in a browser environment before accessing localStorage
-    if (typeof window !== 'undefined') {
+  // Handle client-side initialization
+  React.useEffect(() => {
+    setIsClient(true);
+    let key: Keypair;
+    
+    try {
       const sessionKeyString = localStorage.getItem(SESSION_LOCAL_STORAGE);
       if (sessionKeyString) {
-        sessionKey = Keypair.fromSecretKey(
+        key = Keypair.fromSecretKey(
           Uint8Array.from(JSON.parse(sessionKeyString))
         );
       } else {
-        sessionKey = Keypair.generate();
+        key = Keypair.generate();
         localStorage.setItem(
           SESSION_LOCAL_STORAGE,
-          JSON.stringify(Array.from(sessionKey.secretKey))
+          JSON.stringify(Array.from(key.secretKey))
         );
       }
-    } else {
-      // Fallback for server-side rendering
-      sessionKey = Keypair.generate();
+      setSessionKey(key);
+    } catch (error) {
+      console.error("Error initializing session key:", error);
+      // Fallback to a new keypair if localStorage fails
+      key = Keypair.generate();
+      setSessionKey(key);
+    }
+  }, []);
+
+  const engine = React.useMemo(() => {
+    if (!isClient || !sessionKey) {
+      return {} as MagicBlockEngine;
     }
 
-    return new MagicBlockEngine(walletContext, sessionKey, {
-      minLamports: SESSION_MIN_LAMPORTS,
-      maxLamports: SESSION_MAX_LAMPORTS,
-    });
-  }, [walletContext]);
+    return new MagicBlockEngine(
+      signTransaction,
+      privy,
+      solanaWallets,
+      sessionKey,
+      {
+        minLamports: SESSION_MIN_LAMPORTS,
+        maxLamports: SESSION_MAX_LAMPORTS,
+      }
+    );
+  }, [isClient, sessionKey, privy, solanaWallets, signTransaction]);
+
+  if (!isClient || !sessionKey) {
+    return null;
+  }
 
   return (
     <MagicBlockEngineContext.Provider value={engine}>

@@ -11,42 +11,52 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from '@/stores/store';
 import { useState, useEffect } from 'react';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export function Providers(props: PropsWithChildren<object>) {
-    // Only enable the PersistGate on the client to avoid hydration issues
     const [isClient, setIsClient] = useState(false);
     
     useEffect(() => {
         setIsClient(true);
     }, []);
-    
+
+    // Base providers that don't need client-side checks
+    const baseProviders = (
+        <QueryClientProvider client={queryClient}>
+            <Provider store={store}>
+                <ThemeProvider>
+                    {props.children}
+                </ThemeProvider>
+            </Provider>
+        </QueryClientProvider>
+    );
+
+    // Client-side only providers
+    if (!isClient) {
+        return baseProviders;
+    }
+
     return (
         <QueryClientProvider client={queryClient}>
             <Provider store={store}>
-                {isClient ? (
-                    <PersistGate loading={null} persistor={persistor}>
-                        <SolanaProvider>
-                            <MagicBlockEngineProvider>
-                                <ThemeProvider>
-                                    <PrivyProviders>
-                                        {props.children}
-                                    </PrivyProviders>
-                                </ThemeProvider>
-                            </MagicBlockEngineProvider>
-                        </SolanaProvider>
-                    </PersistGate>
-                ) : (
-                    <SolanaProvider>
-                        <MagicBlockEngineProvider>
-                            <ThemeProvider>
-                                <PrivyProviders>
+                <PersistGate loading={null} persistor={persistor}>
+                    <ThemeProvider>
+                        <PrivyProviders>
+                            <SolanaProvider>
+                                <MagicBlockEngineProvider>
                                     {props.children}
-                                </PrivyProviders>
-                            </ThemeProvider>
-                        </MagicBlockEngineProvider>
-                    </SolanaProvider>
-                )}
+                                </MagicBlockEngineProvider>
+                            </SolanaProvider>
+                        </PrivyProviders>
+                    </ThemeProvider>
+                </PersistGate>
             </Provider>
         </QueryClientProvider>
     );

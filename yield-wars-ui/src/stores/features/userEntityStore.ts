@@ -1,12 +1,21 @@
 'use client';
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { CurrencyType } from '@/lib/constants/programEnums';
 
 // Define types
+export interface PriceComponentPdas {
+  [CurrencyType.USDC]: string;
+  [CurrencyType.BTC]: string;
+  [CurrencyType.ETH]: string;
+  [CurrencyType.SOL]: string;
+  [CurrencyType.AIFI]: string;
+}
+
 interface EntityInfo {
   entityPda: string;
   walletComponentPda: string;
-  usdcPriceComponentPda: string;
+  priceComponentPdas: PriceComponentPdas;
   createdAt: string;
 }
 
@@ -34,14 +43,14 @@ export const userEntitySlice = createSlice({
         walletAddress: string;
         entityPda: string;
         walletComponentPda: string;
-        usdcPriceComponentPda: string;
+        priceComponentPdas: PriceComponentPdas;
       }>
     ) => {
-      const { walletAddress, entityPda, walletComponentPda, usdcPriceComponentPda } = action.payload;
+      const { walletAddress, entityPda, walletComponentPda, priceComponentPdas } = action.payload;
       state.entities[walletAddress] = {
         entityPda,
         walletComponentPda,
-        usdcPriceComponentPda,
+        priceComponentPdas,
         createdAt: new Date().toISOString(),
       };
     },

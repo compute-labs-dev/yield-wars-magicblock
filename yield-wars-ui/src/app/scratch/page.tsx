@@ -36,6 +36,18 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { selectUserEntity, setCurrentEntity, setUserEntity } from '@/stores/features/userEntityStore';
 import { RootState } from '@/stores/store';
+import { useInitializeNewWorld } from '@/hooks/program/useInitializeNewWorld';
+import { selectIsWorldInitialized, selectWorldPda, resetWorld } from '@/stores/features/worldStore';
+
+interface WorldInitData {
+    worldPda: string;
+    currencyEntities: {
+        [key in CurrencyType]?: {
+            entityPda: string;
+            pricePda: string;
+        };
+    };
+}
 
 export default function ScratchPage() {
     // Always declare all hooks at the top level, before any conditional logic
@@ -47,11 +59,11 @@ export default function ScratchPage() {
     const [transferCurrencyType, setTransferCurrencyType] = useState<CurrencyType>(CurrencyType.USDC);
     const [transferAmount, setTransferAmount] = useState<string>("1");
     const [exchangeUserEntity, setExchangeUserEntity] = useState<string>("");
-    const [exchangeSourcePriceEntity, setExchangeSourcePriceEntity] = useState<string>("");
-    const [exchangeDestPriceEntity, setExchangeDestPriceEntity] = useState<string>("");
     const [exchangeSourceCurrency, setExchangeSourceCurrency] = useState<CurrencyType>(CurrencyType.USDC);
     const [exchangeDestCurrency, setExchangeDestCurrency] = useState<CurrencyType>(CurrencyType.BTC);
     const [exchangeAmount, setExchangeAmount] = useState<string>("10");
+    const [priceComponentPdas, setPriceComponentPdas] = useState<{[key in CurrencyType]?: string}>({});
+    const [worldInitData, setWorldInitData] = useState<WorldInitData | null>(null);
 
     // Always use non-conditional hooks first
     useEffect(() => {
@@ -80,15 +92,35 @@ export default function ScratchPage() {
         isLoading: isLoadingInitWallet, 
         data: initWalletData 
     } = useInitializeUserWallet();
-    const { transferCurrency, isLoading: isLoadingTransfer } = useTransferCurrency();
-    const { exchangeCurrency, isLoading: isLoadingExchange } = useExchangeCurrency();
+    const { 
+        transferCurrency, 
+        isLoading: isLoadingTransfer,
+        error: transferError,
+        isError: isTransferError 
+    } = useTransferCurrency();
+    const { 
+        exchangeCurrency, 
+        isLoading: isLoadingExchange 
+    } = useExchangeCurrency();
+
+    // Add world initialization hook
+    const { 
+        initializeWorld, 
+        isLoading: isLoadingWorldInit,
+        error: worldInitError,
+        data: worldData
+    } = useInitializeNewWorld();
+    
+    // Add world state from Redux
+    const isWorldInitialized = useSelector(selectIsWorldInitialized);
+    const worldPda = useSelector(selectWorldPda);
 
     useEffect(() => {
         if (initWalletData?.entityPda) {
             setInitializedUserEntityPda(initWalletData.entityPda);
             setTransferSourceEntity(initWalletData.entityPda);
             setExchangeUserEntity(initWalletData.entityPda);
-            setExchangeSourcePriceEntity(initWalletData.entityPda);
+            
             toast.info(`User Entity PDA Initialized: ${initWalletData.entityPda}`)
         }
     }, [initWalletData]);
@@ -177,12 +209,6 @@ export default function ScratchPage() {
             return;
         }
         try {
-            const privySignerForHook = {
-                signTransaction: async (options: { transaction: Transaction; connection: Connection; uiOptions?: any }) => {
-                    await privySignTransactionDirect(options);
-                }
-            };
-
             const params = {
                 worldPda: worldPdaInit,
                 sourceEntityPda: transferSourceEntity,
@@ -190,8 +216,10 @@ export default function ScratchPage() {
                 currencyType: Number(transferCurrencyType) as CurrencyType,
                 amount: parseInt(transferAmount) * (10**6),
                 userWalletPublicKey: new PublicKey(user.wallet.address),
-                privySigner: privySignerForHook
+                privySigner: new PublicKey(user.wallet.address),
             };
+
+            console.log("Transfer params: ", params);
             await transferCurrency(params);
         } catch (e: any) { 
             toast.error("Transfer failed: " + e.message)
@@ -199,35 +227,71 @@ export default function ScratchPage() {
     };
 
     const handleExchange = async () => {
-        if (!user?.wallet?.address || !privySignTransactionDirect) {
-            toast.error("User wallet not connected or Privy signer not available.");
-            return;
-        }
-        if (!exchangeUserEntity || !exchangeSourcePriceEntity || !exchangeDestPriceEntity || !exchangeAmount) {
-            toast.error("Please fill all exchange fields.");
-            return;
-        }
         try {
-            const privySignerForHook = {
-                signTransaction: async (options: { transaction: Transaction; connection: Connection; uiOptions?: any }) => {
-                    await privySignTransactionDirect(options);
-                }
-            };
+            if (!user?.wallet?.address || !worldPdaInit || !exchangeUserEntity) {
+                toast.error("Missing required data for exchange");
+                return;
+            }
+
+            // Get both price PDAs and currency entity PDAs
+            const sourcePricePda = priceComponentPdas[exchangeSourceCurrency];
+            const destPricePda = priceComponentPdas[exchangeDestCurrency];
+            const sourceCurrencyEntity = worldData?.currencyEntities[exchangeSourceCurrency]?.entityPda;
+            const destCurrencyEntity = worldData?.currencyEntities[exchangeDestCurrency]?.entityPda;
+
+            if (!sourcePricePda || !destPricePda || !sourceCurrencyEntity || !destCurrencyEntity) {
+                toast.error(`Missing required PDAs. Source Price: ${!!sourcePricePda}, Dest Price: ${!!destPricePda}, Source Entity: ${!!sourceCurrencyEntity}, Dest Entity: ${!!destCurrencyEntity}`);
+                return;
+            }
+
+            console.log("Exchange attempt with components:", {
+                sourcePricePda,
+                destPricePda,
+                sourceCurrencyEntity,
+                destCurrencyEntity,
+                exchangeSourceCurrency: CurrencyType[exchangeSourceCurrency],
+                exchangeDestCurrency: CurrencyType[exchangeDestCurrency]
+            });
+
             const params = {
                 worldPda: worldPdaInit,
                 userEntityPda: exchangeUserEntity,
-                sourceCurrencyPriceEntityPda: exchangeSourcePriceEntity,
-                destinationCurrencyPriceEntityPda: exchangeDestPriceEntity,
-                sourceCurrencyType: Number(exchangeSourceCurrency) as CurrencyType,
-                destinationCurrencyType: Number(exchangeDestCurrency) as CurrencyType,
-                amountToExchange: parseInt(exchangeAmount) * (10**6),
-                userWalletPublicKey: new PublicKey(user.wallet.address),
-                privySigner: privySignerForHook
+                transaction_type: 1, // EXCHANGE
+                currency_type: exchangeSourceCurrency,
+                destination_currency_type: exchangeDestCurrency,
+                amount: parseInt(exchangeAmount) * (10**6),
+                userWalletPublicKey: user.wallet.address,
+                privySigner: user.wallet.address,
+                sourcePricePda,
+                destinationPricePda: destPricePda,
+                sourceCurrencyEntityPda: sourceCurrencyEntity,
+                destinationCurrencyEntityPda: destCurrencyEntity
             };
-            await exchangeCurrency(params);
-        } catch (e: any) { 
-            toast.error("Exchange failed: " + e.message)
+
+            console.log("Attempting exchange with params:", params);
+            const result = await exchangeCurrency(params);
+            
+            if (result === undefined || result === null) {
+                toast.error("Exchange failed: No result returned");
+                return;
+            }
+
+            const transaction = VersionedTransaction.deserialize(
+                Buffer.from(result, 'base64')
+            );
+            await handleSignAndSendTransaction(transaction);
+            toast.success("Exchange transaction sent successfully!");
+        } catch (error: any) {
+            console.error("Exchange failed:", error);
+            toast.error(`Exchange failed: ${error.message}`);
         }
+    };
+
+    const handleResetWorld = () => {
+        dispatch(resetWorld());
+        setWorldPdaInit("");
+        setWorldInitData(null);
+        toast.success("World state reset successfully");
     };
 
     const currencyOptions = Object.keys(CurrencyType)
@@ -337,94 +401,220 @@ export default function ScratchPage() {
         getWorldData()
     }, [user?.wallet?.address])
 
+    const handleInitializeWorld = async () => {
+        if (!user?.wallet?.address) {
+            toast.error("User wallet not connected.");
+            return;
+        }
+        try {
+            await initializeWorld({ 
+                userPublicKey: user.wallet.address 
+            });
+        } catch (e: any) {
+            console.error("Failed to initialize world:", e);
+        }
+    };
+
+    useEffect(() => {
+        if (worldData) {
+            console.log("World initialization data:", worldData);
+            
+            // Transform currencyEntities to match the expected format
+            const transformedPdas = Object.entries(worldData.currencyEntities).reduce((acc, [currency, data]) => ({
+                ...acc,
+                [currency]: data.pricePda
+            }), {} as Record<CurrencyType, string>);
+            
+            setPriceComponentPdas(transformedPdas);
+            
+            console.log("Updated price component PDAs:", transformedPdas);
+        }
+    }, [worldData]);
+
+    // Create a useEffect to check the world redux state and update the worldPdaInit state and worldData state
+    useEffect(() => {
+        if (worldPda) {
+            setWorldPdaInit(worldPda);
+        }
+    }, [worldPda]);
+
     if (!ready) return <p>Loading Privy...</p>;
     if (!authenticated) return <LoginContainer />;
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen py-10 px-4">
-            <div className="flex flex-row items-center justify-center mb-4">
-                {user && <GasContainer />}
-                <LoginContainer />
-            </div>
-            {user && (
-                <div className="text-center mb-4">
-                    <p className="text-sm text-muted-foreground">
-                        Email: {user.email?.address}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        Wallet: {user.wallet?.address}
-                    </p>
-                     {initializedUserEntityPda && <p className="text-sm text-green-500">Initialized Entity: {initializedUserEntityPda}</p>}
+        <div className="grid grid-cols-1 items-center justify-center min-h-screen py-10 px-4">
+            <div className="flex flex-col items-center justify-center">
+                <div className="flex flex-row items-center justify-center mb-4">
+                    {user && <GasContainer />}
+                    <LoginContainer />
                 </div>
-            )}
+                {user && (
+                    <div className="text-center mb-4">
+                        <p className="text-sm text-muted-foreground">
+                            Email: {user.email?.address}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            Wallet: {user.wallet?.address}
+                        </p>
+                        {initializedUserEntityPda && <p className="text-sm text-green-500">Initialized Entity: {initializedUserEntityPda}</p>}
+                    </div>
+                )}
 
-            {user && (
-            <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-3 text-center text-white">Initialize Game Wallet</h2>
-                {/* <div className="mb-3">
-                    <label className="block text-sm font-medium mb-1 text-white">World PDA (Defaults to Bolt World ID)</label>
-                    <Input className="mb-2 text-white" value={worldPdaInit} onChange={(e) => setWorldPdaInit(e.target.value)} placeholder="World PDA" />
-                </div> */}
-                <Button className="w-full bg-blue-500 hover:bg-blue-600" onClick={handleInitializeWallet} disabled={isLoadingInitWallet || !user?.wallet?.address}>
-                    {isLoadingInitWallet ? "Initializing..." : "Initialize Wallet"}
-                </Button>
+                {user && !isWorldInitialized && (
+                    <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-3 text-center text-white">Initialize Game World</h2>
+                        <Button 
+                            className="w-full bg-purple-500 hover:bg-purple-600" 
+                            onClick={handleInitializeWorld} 
+                            disabled={isLoadingWorldInit}
+                        >
+                            {isLoadingWorldInit ? "Initializing Game World..." : "Initialize New Game World"}
+                        </Button>
+                        {worldInitError && (
+                            <p className="mt-2 text-red-500 text-sm">{worldInitError.message}</p>
+                        )}
+
+                        
+                    </div>
+                )}
+
+
+
+                {user && isWorldInitialized && (
+                    <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-3 text-center text-white">Game World Status</h2>
+                        <p className="text-sm text-green-500">World Initialized: {worldPda}</p>
+                        {worldData && worldData.currencyEntities && (
+                            <div>
+                                {Object.entries(worldData.currencyEntities).map(([currency, data]) => (
+                                    <div key={currency} className="text-sm text-blue-500">
+                                        <p>{CurrencyType[Number(currency)]} Entity: {data.entityPda}</p>
+                                        <p>{CurrencyType[Number(currency)]} Price PDA: {data.pricePda}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <Button 
+                            className="w-full mt-4 bg-red-500 hover:bg-red-600" 
+                            onClick={handleResetWorld}
+                        >
+                            Reset World State
+                        </Button>
+                    </div>
+                )}
+
+                {user && isWorldInitialized && (
+                    <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-3 text-center text-white">Initialize Game Wallet</h2>
+                        <Button 
+                            className="w-full bg-blue-500 hover:bg-blue-600" 
+                            onClick={handleInitializeWallet} 
+                            disabled={isLoadingInitWallet || !user?.wallet?.address}
+                        >
+                            {isLoadingInitWallet ? "Initializing..." : "Initialize Wallet"}
+                        </Button>
+                    </div>
+                )}
             </div>
-            )}
+            <div className="flex flex-row items-center justify-center">
+                {user && initializedUserEntityPda && (
+                    <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-3 text-center text-white">Transfer Currency</h2>
+                        <Input className="mb-2 text-white" value={transferSourceEntity} onChange={(e) => setTransferSourceEntity(e.target.value)} placeholder="Your Entity PDA (auto-filled if initialized)" />
+                        <Input className="mb-2 text-white" value={transferDestEntity} onChange={(e) => setTransferDestEntity(e.target.value)} placeholder="Recipient Entity PDA" />
+                        <select className="mb-2 w-full p-2 border rounded text-white" value={transferCurrencyType} onChange={(e) => setTransferCurrencyType(Number(e.target.value) as CurrencyType)}>
+                            {currencyOptions}
+                        </select>
+                        <Input className="mb-2" type="number" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="Amount (e.g., 1 for 1 USDC)" />
+                        <Button className="w-full bg-green-500 hover:bg-green-600" onClick={handleTransfer} disabled={isLoadingTransfer || !user?.wallet?.address || !privySignTransactionDirect}>
+                            {isLoadingTransfer ? "Transferring..." : "Transfer"}
+                        </Button>
+                    </div>
+                )}
 
-            {user && initializedUserEntityPda && (
-            <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-3 text-center text-white">Transfer Currency</h2>
-                <Input className="mb-2 text-white" value={transferSourceEntity} onChange={(e) => setTransferSourceEntity(e.target.value)} placeholder="Your Entity PDA (auto-filled if initialized)" />
-                <Input className="mb-2 text-white" value={transferDestEntity} onChange={(e) => setTransferDestEntity(e.target.value)} placeholder="Recipient Entity PDA" />
-                <select className="mb-2 w-full p-2 border rounded text-white" value={transferCurrencyType} onChange={(e) => setTransferCurrencyType(Number(e.target.value) as CurrencyType)}>
-                    {currencyOptions}
-                </select>
-                <Input className="mb-2" type="number" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="Amount (e.g., 1 for 1 USDC)" />
-                <Button className="w-full bg-green-500 hover:bg-green-600" onClick={handleTransfer} disabled={isLoadingTransfer || !user?.wallet?.address || !privySignTransactionDirect}>
-                    {isLoadingTransfer ? "Transferring..." : "Transfer"}
-                </Button>
+                {user && initializedUserEntityPda && (
+                    <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-3 text-center text-white">Exchange Currency</h2>
+                        
+                        {/* Add debug info section */}
+                        <div className="mb-4 p-2 bg-gray-800 rounded text-xs">
+                            <h3 className="text-white font-semibold mb-1">Debug Info:</h3>
+                            <p className="text-gray-400">World PDA: {worldPdaInit}</p>
+                            <p className="text-gray-400">User Entity: {exchangeUserEntity}</p>
+                            <p className="text-gray-400">USDC Price PDA: {priceComponentPdas[CurrencyType.USDC] || 'Not set'}</p>
+                            <p className="text-gray-400">BTC Price PDA: {priceComponentPdas[CurrencyType.BTC] || 'Not set'}</p>
+                        </div>
+
+                        <Input 
+                            className="mb-2 text-white" 
+                            value={exchangeUserEntity} 
+                            onChange={(e) => setExchangeUserEntity(e.target.value)} 
+                            placeholder="Your Entity PDA (auto-filled)" 
+                        />
+                        <label className="block text-sm font-medium mb-1 text-white">Source Currency</label>
+                        <select 
+                            className="mb-2 w-full p-2 border rounded text-white" 
+                            value={exchangeSourceCurrency} 
+                            onChange={(e) => setExchangeSourceCurrency(Number(e.target.value) as CurrencyType)}
+                        >
+                            {currencyOptions}
+                        </select>
+                        <Input 
+                            className="mb-2 text-white" 
+                            type="number" 
+                            value={exchangeAmount} 
+                            onChange={(e) => setExchangeAmount(e.target.value)} 
+                            placeholder="Amount to Exchange" 
+                        />
+                        <label className="block text-sm font-medium mb-1 text-white">Destination Currency</label>
+                        <select 
+                            className="mb-2 w-full p-2 border rounded text-white" 
+                            value={exchangeDestCurrency} 
+                            onChange={(e) => setExchangeDestCurrency(Number(e.target.value) as CurrencyType)}
+                        >
+                            {currencyOptions}
+                        </select>
+                        
+                        {/* Display current price component PDAs for debugging */}
+                        <div className="mb-2 text-xs text-gray-400">
+                            <p>Source Price PDA: {priceComponentPdas[exchangeSourceCurrency] || 'Not available'}</p>
+                            <p>Destination Price PDA: {priceComponentPdas[exchangeDestCurrency] || 'Not available'}</p>
+                        </div>
+
+                        <Button 
+                            className="w-full bg-purple-500 hover:bg-purple-600" 
+                            onClick={handleExchange} 
+                            disabled={
+                                isLoadingExchange || 
+                                !user?.wallet?.address || 
+                                !privySignTransactionDirect ||
+                                !priceComponentPdas[exchangeSourceCurrency] ||
+                                !priceComponentPdas[exchangeDestCurrency]
+                            }
+                        >
+                            {isLoadingExchange ? "Exchanging..." : "Exchange"}
+                        </Button>
+                    </div>
+                )}
             </div>
-            )}
-
-            {user && initializedUserEntityPda && (
-            <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-3 text-center text-white">Exchange Currency</h2>
-                <Input className="mb-2 text-white" value={exchangeUserEntity} onChange={(e) => setExchangeUserEntity(e.target.value)} placeholder="Your Entity PDA (auto-filled)" />
-                <label className="block text-sm font-medium mb-1 text-white">Source Currency</label>
-                <select className="mb-2 w-full p-2 border rounded text-white" value={exchangeSourceCurrency} onChange={(e) => setExchangeSourceCurrency(Number(e.target.value) as CurrencyType)}>
-                    {currencyOptions}
-                </select>
-                <Input className="mb-2 text-white" type="number" value={exchangeAmount} onChange={(e) => setExchangeAmount(e.target.value)} placeholder="Amount to Sell (e.g., 10 for 10 USDC)" />
-                <label className="block text-sm font-medium mb-1 text-white">Destination Currency</label>
-                <select className="mb-2 w-full p-2 border rounded text-white" value={exchangeDestCurrency} onChange={(e) => setExchangeDestCurrency(Number(e.target.value) as CurrencyType)}>
-                    {currencyOptions}
-                </select>
-                <Input className="mb-2 text-white" value={exchangeSourcePriceEntity} onChange={(e) => setExchangeSourcePriceEntity(e.target.value)} placeholder="Source Price Entity PDA (auto-filled)" />
-                <Input className="mb-2 text-white" value={exchangeDestPriceEntity} onChange={(e) => setExchangeDestPriceEntity(e.target.value)} placeholder="Destination Price Entity PDA" />
-                <Button className="w-full bg-purple-500 hover:bg-purple-600" onClick={handleExchange} disabled={isLoadingExchange || !user?.wallet?.address || !privySignTransactionDirect}>
-                    {isLoadingExchange ? "Exchanging..." : "Exchange"}
-                </Button>
-            </div>
-            )}
-
-            <ScratchToReveal
-                width={550}
-                height={550}
-                minScratchPercentage={20}
-                className="flex items-center justify-center overflow-hidden rounded-2xl border-2 bg-gray-100"
-                gradientColors={["#39FF14", "#00FF00", "#333438"]}
-                overlayImage="/logo-icon.svg"
-            >
-                <TransactionRequestQR reference={reference} />
-                <BorderBeam
-                    duration={4}
-                    size={400}
-                    className="from-white via-blue-500 to-white"
-                />
-            </ScratchToReveal>
-
             {user && (
                 <div className="flex flex-col items-center justify-center">
+                    <ScratchToReveal
+                        width={550}
+                        height={550}
+                        minScratchPercentage={20}
+                        className="flex items-center justify-center overflow-hidden rounded-2xl border-2 bg-gray-100"
+                        gradientColors={["#39FF14", "#00FF00", "#333438"]}
+                        overlayImage="/logo-icon.svg"
+                    >
+                        <TransactionRequestQR reference={reference} />
+                        <BorderBeam
+                            duration={4}
+                            size={400}
+                            className="from-white via-blue-500 to-white"
+                        />
+                    </ScratchToReveal>
                     <Button variant="ghost" className="w-full mt-4 bg-green-500" onClick={handleClaimWinnings}>
                         Claim Winnings
                     </Button>

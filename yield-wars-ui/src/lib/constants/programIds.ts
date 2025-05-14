@@ -99,3 +99,43 @@ export function getComponentUpgradeableOnEphem(engine: MagicBlockEngine) {
 export function getComponentWalletOnEphem(engine: MagicBlockEngine) {
     return engine.getProgramOnEphem<Wallet>(componentWallet)
 }
+
+export function getEconomySystemOnChain(engine: MagicBlockEngine) {
+    return engine.getProgramOnChain<Economy>(systemEconomy)
+}
+
+export function getMovementSystemOnChain(engine: MagicBlockEngine) {
+    return engine.getProgramOnChain<Movement>(systemMovement)
+}
+
+export function getPriceActionSystemOnChain(engine: MagicBlockEngine) {
+    return engine.getProgramOnChain<PriceAction>(systemPriceAction)
+}
+
+export function getResourceProductionSystemOnChain(engine: MagicBlockEngine) {
+    return engine.getProgramOnChain<ResourceProduction>(systemResourceProduction)
+}
+
+export function getUpgradeSystemOnChain(engine: MagicBlockEngine) {
+    return engine.getProgramOnChain<Upgrade>(systemUpgrade)
+}
+
+export function getEconomySystemOnEphem(engine: MagicBlockEngine) {
+    return engine.getProgramOnEphem<Economy>(systemEconomy)
+}
+
+export function getMovementSystemOnEphem(engine: MagicBlockEngine) {
+    return engine.getProgramOnEphem<Movement>(systemMovement)
+}
+
+export function getPriceActionSystemOnEphem(engine: MagicBlockEngine) {
+    return engine.getProgramOnEphem<PriceAction>(systemPriceAction)
+}
+
+export function getResourceProductionSystemOnEphem(engine: MagicBlockEngine) {
+    return engine.getProgramOnEphem<ResourceProduction>(systemResourceProduction)
+}
+
+export function getUpgradeSystemOnEphem(engine: MagicBlockEngine) {
+    return engine.getProgramOnEphem<Upgrade>(systemUpgrade)
+}
