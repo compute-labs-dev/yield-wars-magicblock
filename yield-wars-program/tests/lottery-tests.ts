@@ -373,4 +373,403 @@ describe("Lottery Tests", () => {
       expect(updatedLotteryPrizeAccount.isActive).to.equal(true);
     });
   });
+
+
+
+  describe("Lottery System Tests", () => {
+    
+    // Test placing a single bet
+    it("should place a bet and handle the outcome correctly", async () => {
+      // Parameters for the bet
+      const betAmount = 10000000; // 10 AiFi tokens
+
+      // Check current wallet balance
+      const walletAccountBefore = await walletComponent.account.wallet.fetch(walletComponentPda);
+      console.log(`\tAiFi balance before bet: ${walletAccountBefore.aifiBalance.toNumber() / 1000000} AiFi`);
+
+      // Generate randomness as a plain array
+      const randomnessArray = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+
+      // Create structured arguments
+      const args = {
+        PlaceBet: {
+          bet_amount: betAmount,
+          randomness: randomnessArray
+        }
+      };
+
+      // Before state
+      const lotteryPrizeAccountBefore = await lotteryPrizeComponent.account.lotteryPrize.fetch(lotteryPrizeComponentPda);
+      const initialBalance = walletAccountBefore.aifiBalance;
+      const initialTotalBets = lotteryPrizeAccountBefore.totalBets;
+
+      // Use the ApplySystem to place a bet
+      const tx = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemLottery.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: lotteryEntity,
+            components: [
+              { componentId: lotteryPrizeComponent.programId }
+            ]
+          },
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId }
+            ]
+          }
+        ],
+        args
+      });
+
+      const txSign = await provider.sendAndConfirm(tx.transaction as any);
+      console.log(`\tPlaced a bet in the lottery. Tx signature: ${txSign}`);
+
+      // After state
+      const walletAccountAfter = await walletComponent.account.wallet.fetch(walletComponentPda);
+      const lotteryPrizeAccountAfter = await lotteryPrizeComponent.account.lotteryPrize.fetch(lotteryPrizeComponentPda);
+
+      console.log("\tInitial AiFi balance:", initialBalance.toString());
+      console.log("\tFinal AiFi balance:", walletAccountAfter.aifiBalance.toString());
+      console.log("\tBet amount:", betAmount.toString());
+
+      // Check if player won
+      const playerWon = lotteryPrizeAccountAfter.totalWins.toNumber() > lotteryPrizeAccountBefore.totalWins.toNumber();
+      console.log("\tPlayer won:", playerWon);
+
+      if (playerWon) {
+        // If the player won, their balance might be higher than before
+        console.log("\tPlayer won! Prize amount:",
+          (BigInt(walletAccountAfter.aifiBalance.toString()) -
+            BigInt(initialBalance.toString()) +
+            BigInt(betAmount)).toString());
+
+        expect(lotteryPrizeAccountAfter.recentWinners.length).to.be.greaterThan(0);
+      } else {
+        // If player lost, their balance should be lower by exactly the bet amount
+        expect(initialBalance.sub(walletAccountAfter.aifiBalance).toString()).to.equal(betAmount.toString());
+      }
+
+      // Total bets should always increase by 1
+      expect(lotteryPrizeAccountAfter.totalBets.toNumber()).to.equal(initialTotalBets.toNumber() + 1);
+    });
+
+    // Test multiple bets to verify randomness and win/loss patterns
+    it("should allow multiple bets with random outcomes", async () => {
+      // We'll place 5 bets and track results
+      const betAmount = 5000000; // 5 AiFi per bet
+
+      // Check current wallet balance
+      const walletAccountBefore = await walletComponent.account.wallet.fetch(walletComponentPda);
+      console.log(`\tAiFi balance before multiple bets: ${walletAccountBefore.aifiBalance.toNumber() / 1000000} AiFi`);
+
+      const initialBalance = walletAccountBefore.aifiBalance;
+      let totalBets = 0;
+      let wins = 0;
+
+      // Get baseline stats
+      const lotteryPrizeAccountBefore = await lotteryPrizeComponent.account.lotteryPrize.fetch(lotteryPrizeComponentPda);
+      const initialWins = lotteryPrizeAccountBefore.totalWins.toNumber();
+      const initialTotalBets = lotteryPrizeAccountBefore.totalBets.toNumber();
+      
+      // Get the win probability for reference
+      const winProbability = lotteryPrizeAccountBefore.winProbability.toString();
+      console.log(`\tCurrent win probability: ${winProbability} out of 10000 (${parseInt(winProbability)/100}%)`);
+
+      // Place multiple bets
+      for (let i = 0; i < 5; i++) {
+        // Generate randomness with a pattern to ensure some wins
+        // For the first and third bets, use a value that will result in a win
+        let randomnessArray;
+        
+        if (i === 1 || i === 3) {
+          // These are "rigged" to win - filling with low values to ensure
+          // that when converted to u64 and modulo 10000, it will be <= winProbability
+          randomnessArray = Array(32).fill(0);
+          randomnessArray[0] = parseInt(winProbability) > 100 ? 1 : 0; // A value that will be small after conversion
+        } else {
+          // Regular random values (likely to lose)
+          randomnessArray = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+        }
+
+        // Create structured arguments
+        const args = {
+          PlaceBet: {
+            bet_amount: betAmount,
+            randomness: randomnessArray
+          }
+        };
+
+        // Place the bet
+        const tx = await ApplySystem({
+          authority: provider.wallet.publicKey,
+          systemId: systemLottery.programId,
+          world: worldPda,
+          entities: [
+            {
+              entity: lotteryEntity,
+              components: [
+                { componentId: lotteryPrizeComponent.programId }
+              ]
+            },
+            {
+              entity: entityPda,
+              components: [
+                { componentId: walletComponent.programId }
+              ]
+            }
+          ],
+          args
+        });
+
+        await provider.sendAndConfirm(tx.transaction as any);
+        totalBets++;
+
+        // Check lottery state after bet
+        const lotteryPrizeAccount = await lotteryPrizeComponent.account.lotteryPrize.fetch(lotteryPrizeComponentPda);
+
+        // If wins increased, player won this round
+        if (lotteryPrizeAccount.totalWins.toNumber() > initialWins + wins) {
+          wins++;
+          console.log(`\tRound ${i + 1}: Player WON!`);
+        } else {
+          console.log(`\tRound ${i + 1}: Player lost`);
+        }
+      }
+
+      // Final state
+      const walletAccountAfter = await walletComponent.account.wallet.fetch(walletComponentPda);
+      const lotteryPrizeAccountAfter = await lotteryPrizeComponent.account.lotteryPrize.fetch(lotteryPrizeComponentPda);
+
+      console.log("\t-------- Lottery Summary --------");
+      console.log(`\tTotal bets placed: ${totalBets}`);
+      console.log(`\tWins: ${wins} (${(wins / totalBets * 100).toFixed(1)}% win rate)`);
+      console.log(`\tInitial AiFi balance: ${initialBalance.toString()}`);
+      console.log(`\tFinal AiFi balance: ${walletAccountAfter.aifiBalance.toString()}`);
+      console.log(`\tNet profit/loss: ${walletAccountAfter.aifiBalance.sub(initialBalance).toString()}`);
+      console.log("\t--------------------------------");
+
+      // Check that the lottery total bets increased correctly
+      expect(lotteryPrizeAccountAfter.totalBets.toNumber()).to.equal(initialTotalBets + totalBets);
+      
+      // Verify the win count matches our tracking
+      expect(lotteryPrizeAccountAfter.totalWins.toNumber()).to.equal(initialWins + wins);
+    });
+
+    // Test placing a bet on inactive lottery (should fail)
+    it("should prevent betting when lottery is inactive", async () => {
+      // First deactivate the lottery using literal number values
+      const deactivateArgs = {
+        UpdateParams: {
+          min_bet_amount: 2000000, // Use the same values that worked in earlier tests
+          win_probability: 1000,
+          max_win_multiplier: 8000,
+          is_active: false
+        }
+      };
+
+      // Deactivate the lottery
+      let tx = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemLottery.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: lotteryEntity,
+            components: [
+              { componentId: lotteryPrizeComponent.programId }
+            ]
+          },
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId }
+            ]
+          }
+        ],
+        args: deactivateArgs
+      });
+
+      await provider.sendAndConfirm(tx.transaction as any);
+      
+      // Now try to place a bet
+      const betAmount = 5000000; // 5 AiFi
+      const randomnessArray = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      
+      const betArgs = {
+        PlaceBet: {
+          bet_amount: betAmount,
+          randomness: randomnessArray
+        }
+      };
+      
+      // Try to place bet on inactive lottery
+      tx = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemLottery.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: lotteryEntity,
+            components: [
+              { componentId: lotteryPrizeComponent.programId }
+            ]
+          },
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId }
+            ]
+          }
+        ],
+        args: betArgs
+      });
+      
+      try {
+        await provider.sendAndConfirm(tx.transaction as any);
+        // If we get here, the test failed
+        expect.fail("Should not be able to place bet on inactive lottery");
+      } catch (error) {
+        // Expected error - verify it's because the lottery is inactive
+        expect(error.toString()).to.include("LotteryNotActive");
+        console.log("\tCorrectly prevented bet on inactive lottery");
+      }
+      
+      // Reactivate lottery for subsequent tests using literal number values
+      const reactivateArgs = {
+        UpdateParams: {
+          min_bet_amount: 2000000, // Use the same values that worked in earlier tests
+          win_probability: 1000,
+          max_win_multiplier: 8000,
+          is_active: true
+        }
+      };
+      
+      tx = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemLottery.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: lotteryEntity,
+            components: [
+              { componentId: lotteryPrizeComponent.programId }
+            ]
+          },
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId }
+            ]
+          }
+        ],
+        args: reactivateArgs
+      });
+      
+      await provider.sendAndConfirm(tx.transaction as any);
+    });
+
+    // Test placing a bet with insufficient funds
+    it("should prevent betting with insufficient funds", async () => {
+      // Get current wallet balance
+      const walletAccountBefore = await walletComponent.account.wallet.fetch(walletComponentPda);
+      // Try to bet more than available balance
+      const betAmount = walletAccountBefore.aifiBalance.toNumber() + 1000000; // More than available
+      
+      const randomnessArray = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      
+      const args = {
+        PlaceBet: {
+          bet_amount: betAmount,
+          randomness: randomnessArray
+        }
+      };
+      
+      // Try to place bet with insufficient funds
+      const tx = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemLottery.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: lotteryEntity,
+            components: [
+              { componentId: lotteryPrizeComponent.programId }
+            ]
+          },
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId }
+            ]
+          }
+        ],
+        args
+      });
+      
+      try {
+        await provider.sendAndConfirm(tx.transaction as any);
+        // If we get here, the test failed
+        expect.fail("Should not be able to place bet with insufficient funds");
+      } catch (error) {
+        // Expected error - verify it's because of insufficient funds
+        expect(error.toString()).to.include("InsufficientFunds");
+        console.log("\tCorrectly prevented bet with insufficient funds");
+      }
+    });
+
+    // Test placing a bet below minimum amount
+    it("should prevent betting below minimum amount", async () => {
+      // Get current minimum bet amount
+      const lotteryPrizeAccount = await lotteryPrizeComponent.account.lotteryPrize.fetch(lotteryPrizeComponentPda);
+      const minBetAmount = lotteryPrizeAccount.minBetAmount.toNumber();
+      
+      // Try to bet less than minimum
+      const betAmount = Math.max(1, minBetAmount - 1); // One less than minimum
+      
+      const randomnessArray = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      
+      const args = {
+        PlaceBet: {
+          bet_amount: betAmount,
+          randomness: randomnessArray
+        }
+      };
+      
+      // Try to place bet below minimum amount
+      const tx = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemLottery.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: lotteryEntity,
+            components: [
+              { componentId: lotteryPrizeComponent.programId }
+            ]
+          },
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId }
+            ]
+          }
+        ],
+        args
+      });
+      
+      try {
+        await provider.sendAndConfirm(tx.transaction as any);
+        // If we get here, the test failed
+        expect.fail("Should not be able to place bet below minimum amount");
+      } catch (error) {
+        // Expected error - verify it's because of bet amount too low
+        expect(error.toString()).to.include("BetAmountTooLow");
+        console.log("\tCorrectly prevented bet below minimum amount");
+      }
+    });
+  });
 });
