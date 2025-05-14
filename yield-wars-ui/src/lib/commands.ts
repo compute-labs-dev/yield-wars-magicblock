@@ -4,7 +4,7 @@ import {
     // StaticCommand,
     // DynamicCommand 
 } from '@/models/commands';
-import { store } from '@/stores/store'; // Import Redux store
+import { store } from '@/stores/store'; // Import Redux store from the correct location
 import {
     toggleWorldFlat,
     setTerminalHeight, // Import terminal action

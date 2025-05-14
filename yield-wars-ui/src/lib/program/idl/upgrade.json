@@ -1,0 +1,421 @@
+{
+  "address": "EtvUjVbFTusfQCsz7kReDepfERFuCnPYBHJRZNWjA6q9",
+  "metadata": {
+    "name": "upgrade",
+    "version": "0.2.2",
+    "spec": "0.1.0",
+    "description": "Created with Bolt"
+  },
+  "docs": [
+    "Upgrade system for handling entity upgrades",
+    "",
+    "This system allows entities to:",
+    "- Initialize upgrade properties",
+    "- Perform upgrades",
+    "- Apply upgrade benefits to production",
+    "- Update upgrade costs for the next level"
+  ],
+  "instructions": [
+    {
+      "name": "bolt_execute",
+      "discriminator": [
+        75,
+        206,
+        62,
+        210,
+        52,
+        215,
+        104,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "authority"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": "bytes"
+        }
+      ],
+      "returns": {
+        "vec": "bytes"
+      }
+    },
+    {
+      "name": "execute",
+      "docs": [
+        "Main execution function for the Upgrade system"
+      ],
+      "discriminator": [
+        130,
+        221,
+        242,
+        154,
+        13,
+        193,
+        189,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "upgradeable"
+        },
+        {
+          "name": "wallet"
+        },
+        {
+          "name": "production"
+        },
+        {
+          "name": "authority"
+        }
+      ],
+      "args": [
+        {
+          "name": "_args",
+          "type": "bytes"
+        }
+      ],
+      "returns": {
+        "vec": "bytes"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Production",
+      "discriminator": [
+        141,
+        81,
+        95,
+        126,
+        26,
+        136,
+        101,
+        92
+      ]
+    },
+    {
+      "name": "Upgradeable",
+      "discriminator": [
+        92,
+        9,
+        162,
+        145,
+        129,
+        145,
+        28,
+        204
+      ]
+    },
+    {
+      "name": "Wallet",
+      "discriminator": [
+        24,
+        89,
+        59,
+        139,
+        81,
+        154,
+        232,
+        95
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AlreadyMaxLevel",
+      "msg": "Entity is already at maximum level"
+    },
+    {
+      "code": 6001,
+      "name": "InsufficientUsdcFunds",
+      "msg": "Insufficient USDC funds for upgrade"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientAifiFunds",
+      "msg": "Insufficient AiFi funds for upgrade"
+    },
+    {
+      "code": 6003,
+      "name": "UpgradeCooldown",
+      "msg": "Upgrade cooldown period has not elapsed"
+    },
+    {
+      "code": 6004,
+      "name": "CannotUpgrade",
+      "msg": "This entity cannot be upgraded"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidOperation",
+      "msg": "Invalid operation type specified"
+    },
+    {
+      "code": 6006,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow in calculation"
+    }
+  ],
+  "types": [
+    {
+      "name": "BoltMetadata",
+      "docs": [
+        "Metadata for the component."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Production",
+      "docs": [
+        "Production component that tracks resource generation rates",
+        "",
+        "This component is used to define the production capabilities of entities in the YieldWars game,",
+        "such as GPUs that produce USDC and AiFi tokens. It includes:",
+        "- Production rates per hour for USDC and AiFi",
+        "- Last collection timestamp to calculate uncollected resources",
+        "- Efficiency multiplier that can be affected by upgrades, data centers, or energy contracts"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdc_per_hour",
+            "docs": [
+              "USDC tokens produced per hour"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "aifi_per_hour",
+            "docs": [
+              "AiFi tokens produced per hour"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_collection_time",
+            "docs": [
+              "Timestamp of the last resource collection (Unix timestamp)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "efficiency_multiplier",
+            "docs": [
+              "Efficiency multiplier applied to production rates (10000 = 100%)",
+              "This can be increased by:",
+              "- Placing GPUs in data centers",
+              "- Purchasing energy contracts",
+              "- Applying upgrades"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "producer_type",
+            "docs": [
+              "Type of production entity (uses same enum as Ownership component)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "level",
+            "docs": [
+              "Current level of the production entity (affects base rates)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether production is currently active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "operating_cost",
+            "docs": [
+              "Operating cost per hour in USDC"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Upgradeable",
+      "docs": [
+        "Upgradeable component that defines upgrade capabilities for entities",
+        "",
+        "This component is attached to entities that can be upgraded, such as GPUs and Data Centers.",
+        "It tracks the current level, maximum possible level, and stores required upgrade costs.",
+        "The upgrade costs define the amount of resources needed for each level upgrade."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current_level",
+            "docs": [
+              "Current level of the entity (starts at 1)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "max_level",
+            "docs": [
+              "Maximum level this entity can reach"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "last_upgrade_time",
+            "docs": [
+              "Last time this entity was upgraded (Unix timestamp)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "can_upgrade",
+            "docs": [
+              "Whether entity can be upgraded further"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "upgradeable_type",
+            "docs": [
+              "Type of the upgradeable entity (uses same enum as Ownership component)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "next_upgrade_usdc_cost",
+            "docs": [
+              "USDC cost for the next upgrade"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "next_upgrade_aifi_cost",
+            "docs": [
+              "AiFi cost for the next upgrade"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "upgrade_cooldown",
+            "docs": [
+              "Cooldown between upgrades in seconds"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "next_usdc_boost",
+            "docs": [
+              "Production boost percentage for USDC after next upgrade (10000 = 100%)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "next_aifi_boost",
+            "docs": [
+              "Production boost percentage for AiFi after next upgrade (10000 = 100%)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Wallet",
+      "docs": [
+        "Wallet component that tracks currency balances for the player",
+        "",
+        "This component stores the balances of different cryptocurrencies",
+        "that a player can own in the YieldWars game. It tracks:",
+        "- USDC: Base currency used for most transactions",
+        "- BTC: Bitcoin, a tradable cryptocurrency with fluctuating value",
+        "- ETH: Ethereum, a tradable cryptocurrency with fluctuating value",
+        "- SOL: Solana, a tradable cryptocurrency with fluctuating value",
+        "- AiFi: Special token produced by GPUs, used for advanced upgrades"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdc_balance",
+            "docs": [
+              "Balance of USDC (stablecoin), the base currency"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_balance",
+            "docs": [
+              "Balance of Bitcoin (BTC)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "eth_balance",
+            "docs": [
+              "Balance of Ethereum (ETH)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "sol_balance",
+            "docs": [
+              "Balance of Solana (SOL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "aifi_balance",
+            "docs": [
+              "Balance of AiFi tokens"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

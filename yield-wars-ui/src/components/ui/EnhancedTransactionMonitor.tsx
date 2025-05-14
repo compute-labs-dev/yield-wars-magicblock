@@ -156,8 +156,67 @@ export const EnhancedTransactionMonitor = () => {
     return [...programs, ...systemPrograms];
   };
 
-  // Significantly enhance the processLogs function to catch more patterns
-  const processLogs = (logs: string[]) => {
+
+  // Add a direct action-based session update function
+  const updateSessionInfo = useCallback((action: 'set-world' | 'add-entity' | 'add-component' | 'add-system' | 'add-error', value: string) => {
+    console.log(`📊 Session update: ${action} = ${value}`);
+    
+    switch (action) {
+      case 'set-world':
+        setSessionInfo(prev => ({
+          ...prev,
+          worldId: value
+        }));
+        break;
+      case 'add-entity':
+        setSessionInfo(prev => {
+          if (!prev.entityIds.includes(value)) {
+            return {
+              ...prev,
+              entityIds: [...prev.entityIds, value]
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'add-component':
+        setSessionInfo(prev => {
+          if (!prev.componentsInitialized.includes(value)) {
+            return {
+              ...prev,
+              componentsInitialized: [...prev.componentsInitialized, value]
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'add-system':
+        setSessionInfo(prev => {
+          if (!prev.systemsApplied.includes(value)) {
+            return {
+              ...prev,
+              systemsApplied: [...prev.systemsApplied, value]
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'add-error':
+        setSessionInfo(prev => {
+          if (!prev.errors.includes(value)) {
+            return {
+              ...prev,
+              errors: [...prev.errors, value]
+            };
+          }
+          return prev;
+        });
+        break;
+    }
+  }, []);
+
+  // Wrap processLogs in useCallback
+  const processLogs = useCallback((logs: string[]) => {
     const enhancedData: EnhancedData = {};
     
     // Check for direct mentions of World, Entity, Component, or System in any logs
@@ -383,65 +442,8 @@ export const EnhancedTransactionMonitor = () => {
     }
     
     return enhancedData;
-  };
+  }, [updateSessionInfo]);
 
-  // Add a direct action-based session update function
-  const updateSessionInfo = useCallback((action: 'set-world' | 'add-entity' | 'add-component' | 'add-system' | 'add-error', value: string) => {
-    console.log(`📊 Session update: ${action} = ${value}`);
-    
-    switch (action) {
-      case 'set-world':
-        setSessionInfo(prev => ({
-          ...prev,
-          worldId: value
-        }));
-        break;
-      case 'add-entity':
-        setSessionInfo(prev => {
-          if (!prev.entityIds.includes(value)) {
-            return {
-              ...prev,
-              entityIds: [...prev.entityIds, value]
-            };
-          }
-          return prev;
-        });
-        break;
-      case 'add-component':
-        setSessionInfo(prev => {
-          if (!prev.componentsInitialized.includes(value)) {
-            return {
-              ...prev,
-              componentsInitialized: [...prev.componentsInitialized, value]
-            };
-          }
-          return prev;
-        });
-        break;
-      case 'add-system':
-        setSessionInfo(prev => {
-          if (!prev.systemsApplied.includes(value)) {
-            return {
-              ...prev,
-              systemsApplied: [...prev.systemsApplied, value]
-            };
-          }
-          return prev;
-        });
-        break;
-      case 'add-error':
-        setSessionInfo(prev => {
-          if (!prev.errors.includes(value)) {
-            return {
-              ...prev,
-              errors: [...prev.errors, value]
-            };
-          }
-          return prev;
-        });
-        break;
-    }
-  }, []);
 
   const fetchTransactions = useCallback(async () => {
     if (!activeConnection || connectionStatus !== 'connected') {
@@ -741,7 +743,7 @@ export const EnhancedTransactionMonitor = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeConnection, connectionStatus, endpoint, maxTransactions, processedProgramIds, sessionInfo, transactions, loading, processLogs, testConnections, updateSessionInfo]);
+  }, [activeConnection, connectionStatus, maxTransactions, processedProgramIds, sessionInfo, transactions, processLogs, testConnections, updateSessionInfo]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;

@@ -16,6 +16,10 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
 
   // You can also provide a custom RPC endpoint
   const endpoint = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return clusterApiUrl(network); // Default to mainnet during SSR
+    }
+    
     // When testing locally with validator, use 'http://localhost:8899'
     if (process.env.NEXT_PUBLIC_USE_LOCAL_VALIDATOR === 'true') {
       return 'http://localhost:8899';
@@ -25,12 +29,21 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
 
   // @solana/wallet-adapter-wallets includes all the adapters but supports tree shaking
   const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-    ],
+    () => {
+      if (typeof window === 'undefined') {
+        return []; // Return empty array during SSR
+      }
+      return [
+        new PhantomWalletAdapter(),
+        new SolflareWalletAdapter(),
+      ];
+    },
     []
   );
+
+  if (typeof window === 'undefined') {
+    return <>{children}</>; // Return children without wallet providers during SSR
+  }
 
   return (
     <ConnectionProvider endpoint={endpoint}>
