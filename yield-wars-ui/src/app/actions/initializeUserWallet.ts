@@ -1,6 +1,6 @@
 'use server';
 
-import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction, VersionedTransaction, TransactionMessage } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 import {
   AddEntity,

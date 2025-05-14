@@ -7,14 +7,10 @@
  * Also used in `yield-wars-program/tests/yield-wars-program.ts`
  */
 export enum EconomyTransactionType {
-  Transfer = 0,
-  Exchange = 1,
-  // Note: The EconomySystem enum has `Purchase = 2`.
-  // The tests used `INITIALIZE = 2` for funding wallets via EconomySystem.
-  // Clarify if `Purchase` is the correct general term or if a separate type for Initialize exists or is needed.
-  // For now, sticking to what's in the EconomySystem enum directly.
-  Purchase = 2, 
-  Initialize = 2, // Adding based on test usage for wallet funding. Needs reconciliation with `Purchase`.
+  TRANSFER = 0,
+  EXCHANGE = 1,
+  INITIALIZE = 2,
+  PURCHASE = 3  // Changed from 2 to 3 to avoid duplicate
 }
 
 /**
@@ -26,7 +22,7 @@ export enum CurrencyType {
   BTC = 1,
   ETH = 2,
   SOL = 3,
-  AIFI = 4, // AiFi in EconomySystem, AiFi in WalletComponent
+  AIFI = 4
 }
 
 /**

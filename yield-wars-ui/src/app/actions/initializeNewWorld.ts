@@ -14,19 +14,12 @@ import {
 import { CurrencyType } from '@/lib/constants/programEnums';
 import bs58 from 'bs58';
 
-
-interface InitializeWorldParams {
-    userPublicKey: string;
-}
-
 interface InitializeWorldResult {
     worldPda: string;
-    currencyEntities: {
-        [key in CurrencyType]: {
-            entityPda: string;
-            pricePda: string;
-        };
-    };
+    currencyEntities: Record<CurrencyType, {
+        entityPda: string;
+        pricePda: string;
+    }>;
 }
 
 // Add explicit price initialization parameters
@@ -68,10 +61,7 @@ const PRICE_INIT_PARAMS = {
     }
 } as const;
 
-
-export async function initializeNewWorld(
-    params: InitializeWorldParams
-): Promise<InitializeWorldResult> {
+export async function initializeNewWorld() : Promise<InitializeWorldResult> {
     try {
         const ADMIN_PRIVATE_KEY_BS58 = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
         if (!ADMIN_PRIVATE_KEY_BS58) {
@@ -98,7 +88,7 @@ export async function initializeNewWorld(
         
         console.log(`World initialized (ID=${initNewWorld.worldPda})`);
 
-        const currencyEntities: any = {};
+        const currencyEntities: Record<CurrencyType, { entityPda: string; pricePda: string }> = {} as Record<CurrencyType, { entityPda: string; pricePda: string }>;
 
         // 2. Create and initialize each currency entity one at a time
         for (const currency of Object.values(CurrencyType)) {

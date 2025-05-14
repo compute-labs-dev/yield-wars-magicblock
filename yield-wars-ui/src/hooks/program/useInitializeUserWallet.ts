@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { setUserEntity } from '@/stores/features/userEntityStore';
 import type { PriceComponentPdas } from '@/stores/features/userEntityStore';
-import { CurrencyType } from '@/lib/constants/programEnums';
 
 interface InitializeWalletParams {
   userPublicKey: string;
@@ -38,7 +37,7 @@ export function useInitializeUserWallet() {
       // Transform the price component PDAs to match the expected format
       const transformedPdas = Object.entries(serverResult.priceComponentPdas).reduce((acc, [key, value]) => ({
         ...acc,
-        [CurrencyType[key as keyof typeof CurrencyType]]: value
+        [Number(key)]: value
       }), {} as PriceComponentPdas);
       
       if (isClient) {
@@ -68,7 +67,7 @@ export function useInitializeUserWallet() {
       queryClient.invalidateQueries({ queryKey: ['userWalletData', data.walletComponentPda] });
       
       // Invalidate price component queries for each currency
-      Object.entries(data.priceComponentPdas).forEach(([currency, pda]) => {
+      Object.entries(data.priceComponentPdas).forEach(([, pda]) => {
         queryClient.invalidateQueries({ queryKey: ['priceComponent', pda] });
       });
     },

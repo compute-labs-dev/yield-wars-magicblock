@@ -8,14 +8,11 @@ import {
 } from '@solana/web3.js';
 import { ApplySystem } from '@magicblock-labs/bolt-sdk';
 import {
-  getEconomySystemOnChain,
-  getComponentWalletOnChain,
-  getComponentPriceOnChain,
   SYSTEM_ECONOMY_PROGRAM_ID,
   COMPONENT_WALLET_PROGRAM_ID,
   COMPONENT_PRICE_PROGRAM_ID
 } from '@/lib/constants/programIds';
-import { EconomyTransactionType, CurrencyType } from '@/lib/constants/programEnums';
+import { CurrencyType } from '@/lib/constants/programEnums';
 
 export interface TransferCurrencyParams {
   worldPda: string;
@@ -34,7 +31,6 @@ export async function transferCurrency(params: TransferCurrencyParams) {
 
     // Convert string public keys to PublicKey objects
     const privySigner = new PublicKey(params.privySigner);
-    const userWallet = new PublicKey(params.userWalletPublicKey);
 
     // Get the latest blockhash
     const { blockhash } = await connection.getLatestBlockhash();

@@ -28,6 +28,7 @@ export const ScratchToReveal: React.FC<ScratchToRevealProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isScratching, setIsScratching] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const controls = useAnimation();
 
@@ -77,18 +78,39 @@ export const ScratchToReveal: React.FC<ScratchToRevealProps> = ({
     }
   }, []);
 
-  const startAnimation = async () => {
-    await controls.start({
-      scale: [1, 1.5, 1],
-      rotate: [0, 10, -10, 10, -10, 0],
-      transition: { duration: 0.5 },
-    });
+  const startAnimation = useCallback(() => {
+    if (!canvasRef.current || isAnimating) return;
+    setIsAnimating(true);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    // Call onComplete after animation finishes
-    if (onComplete) {
-      onComplete();
-    }
-  };
+    let currentRadius = 10;
+    const maxRadius = Math.max(canvas.width, canvas.height);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const animationSpeed = 5;
+
+    const animate = () => {
+      if (currentRadius >= maxRadius) {
+        setIsAnimating(false);
+        setIsComplete(true);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (onComplete) onComplete();
+        return;
+      }
+
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      currentRadius += animationSpeed;
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+  }, [isAnimating, onComplete]);
 
   const checkCompletion = useCallback(() => {
     if (isComplete) return;

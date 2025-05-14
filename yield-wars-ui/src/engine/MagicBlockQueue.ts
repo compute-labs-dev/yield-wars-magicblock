@@ -28,6 +28,7 @@ export class MagicBlockQueue {
         }
       } catch (error) {
         // The error should be handled by another awaiter (from the return)
+        console.error("Error in processSessionEphemTransaction:", error);
       }
       const expiration = new Promise<string>((resolve) =>
         setTimeout(() => resolve(""), 1000)

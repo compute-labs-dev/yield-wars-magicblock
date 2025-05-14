@@ -9,7 +9,7 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { usePrivy, type PrivyInterface } from '@privy-io/react-auth';
+import type { PrivyInterface } from '@privy-io/react-auth';
 import { 
   useSolanaWallets, 
   useSignTransaction, 
@@ -19,14 +19,14 @@ import {
 const ENDPOINT_CHAIN_RPC = "https://api.devnet.solana.com";
 const ENDPOINT_CHAIN_WS = "wss://api.devnet.solana.com";
 
-const _ENDPOINT_CHAIN_RPC = "http://127.0.0.1:7899";
-const _ENDPOINT_CHAIN_WS = "ws://127.0.0.1:7900";
+// const _ENDPOINT_CHAIN_RPC = "http://127.0.0.1:7899";
+// const _ENDPOINT_CHAIN_WS = "ws://127.0.0.1:7900";
 
 const ENDPOINT_EPHEM_RPC = "https://devnet.magicblock.app";
 const ENDPOINT_EPHEM_WS = "wss://devnet.magicblock.app:8900";
 
-const _ENDPOINT_EPHEM_RPC = "http://localhost:8899";
-const _ENDPOINT_EPHEM_WS = "ws://localhost:8900";
+// const _ENDPOINT_EPHEM_RPC = "http://localhost:8899";
+// const _ENDPOINT_EPHEM_WS = "ws://localhost:8900";
 
 const TRANSACTION_COST_LAMPORTS = 5000;
 
@@ -53,25 +53,30 @@ export class MagicBlockEngine {
   private signTransaction: ReturnType<typeof useSignTransaction>;
   private privy: PrivyInterface;
   private solanaWallets: ReturnType<typeof useSolanaWallets>;
+  private connection: Connection;
+  private endpoint: string;
 
   constructor(
     signTransaction: ReturnType<typeof useSignTransaction>,
     privy: PrivyInterface,
     solanaWallets: ReturnType<typeof useSolanaWallets>,
     sessionKey: Keypair,
-    sessionConfig: SessionConfig
+    sessionConfig: SessionConfig,
+    endpoint: string
   ) {
     this.signTransaction = signTransaction;
     this.privy = privy;
     this.solanaWallets = solanaWallets;
     this.sessionKey = sessionKey;
     this.sessionConfig = sessionConfig;
+    this.endpoint = endpoint;
+    this.connection = new Connection(endpoint);
   }
 
-  getProgramOnChain<T extends Idl>(idl: {}): Program<T> {
+  getProgramOnChain<T extends Idl>(idl: Record<string, unknown>): Program<T> {
     return new Program<T>(idl as T, { connection: connectionChain });
   }
-  getProgramOnEphem<T extends Idl>(idl: {}): Program<T> {
+  getProgramOnEphem<T extends Idl>(idl: Record<string, unknown>): Program<T> {
     return new Program<T>(idl as T, { connection: connectionEphem });
   }
 
@@ -160,7 +165,7 @@ export class MagicBlockEngine {
     transaction: Transaction
   ): Promise<string> {
     console.log(name, "sending");
-    transaction.compileMessage;
+    transaction.compileMessage();
     const signature = await connectionEphem.sendTransaction(
       transaction,
       [this.sessionKey],
@@ -255,12 +260,26 @@ export class MagicBlockEngine {
     }
   }
 
-  getChainAccountInfo(address: PublicKey) {
-    return connectionChain.getAccountInfo(address);
+  async getChainAccountInfo(address: PublicKey): Promise<{ owner: PublicKey } | null> {
+    try {
+      const accountInfo = await this.connection.getAccountInfo(address);
+      if (!accountInfo) return null;
+      return { owner: accountInfo.owner };
+    } catch (error) {
+      console.error('Failed to get chain account info:', error);
+      return null;
+    }
   }
 
-  getEphemAccountInfo(address: PublicKey) {
-    return connectionEphem.getAccountInfo(address);
+  async getEphemeralAccountInfo(address: PublicKey): Promise<{ owner: PublicKey } | null> {
+    try {
+      const accountInfo = await this.connection.getAccountInfo(address);
+      if (!accountInfo) return null;
+      return { owner: accountInfo.owner };
+    } catch (error) {
+      console.error('Failed to get ephemeral account info:', error);
+      return null;
+    }
   }
 
   subscribeToChainAccountInfo(

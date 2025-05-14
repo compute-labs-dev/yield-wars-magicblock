@@ -2,8 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Connection, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
-import { useMagicBlockEngine } from '@/engine/MagicBlockEngineProvider';
+import { PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { useSolanaWallets } from '@privy-io/react-auth/solana';
 import { transferCurrency } from '@/app/actions/transferCurrency';
 import { CurrencyType } from '@/lib/constants/programEnums';
@@ -21,7 +20,6 @@ export interface TransferCurrencyParams {
 
 export const useTransferCurrency = () => {
   const queryClient = useQueryClient();
-  const engine = useMagicBlockEngine();
   const { wallets } = useSolanaWallets();
   const { signAndSend } = useSignAndSendTransaction();
   const wallet = wallets[0];
@@ -60,7 +58,8 @@ export const useTransferCurrency = () => {
 
       } catch (error) {
         console.error('Transfer failed:', error);
-        toast.error('Transfer failed: ' + (error as Error).message);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error('Transfer failed: ' + errorMessage);
         throw error;
       }
     },

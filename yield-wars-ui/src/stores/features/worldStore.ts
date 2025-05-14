@@ -42,7 +42,7 @@ export const worldSlice = createSlice({
         state.lastInitializedAt = Date.now();
       }
     },
-    resetWorld: (state) => {
+    resetWorld: () => {
       return initialState;
     }
   }

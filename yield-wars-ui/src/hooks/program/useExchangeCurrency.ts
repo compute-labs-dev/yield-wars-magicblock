@@ -2,16 +2,13 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
-import { useMagicBlockEngine } from '@/engine/MagicBlockEngineProvider';
+import { VersionedTransaction } from '@solana/web3.js';
 import { useSolanaWallets } from '@privy-io/react-auth/solana';
 import { exchangeCurrency, ExchangeCurrencyParams } from '@/app/actions/exchangeCurrency';
-import { CurrencyType } from '@/lib/constants/programEnums';
 import { useSignAndSendTransaction } from '../useSignAndSendTransaction';
 
 export const useExchangeCurrency = () => {
   const queryClient = useQueryClient();
-  const engine = useMagicBlockEngine();
   const { wallets } = useSolanaWallets();
   const { signAndSend } = useSignAndSendTransaction();
   const wallet = wallets[0];
@@ -45,9 +42,10 @@ export const useExchangeCurrency = () => {
         });
 
         return signature;
-      } catch (error: any) {
+      } catch (error) {
         console.error("Exchange failed:", error);
-        toast.error(`Exchange failed: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error(`Exchange failed: ${errorMessage}`);
         throw error;
       }
     },
