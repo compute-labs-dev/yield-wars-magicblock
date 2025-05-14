@@ -9,12 +9,8 @@ import { toast } from 'sonner';
 import { initializeNewWorld } from '@/app/actions/initializeNewWorld';
 import { CurrencyType } from '@/lib/constants/programEnums';
 
-interface InitializeWorldParams {
-    userPublicKey: string;
-}
-
 interface UseInitializeWorldResult {
-    initializeWorld: (params: InitializeWorldParams) => Promise<void>;
+    initializeWorld: () => Promise<void>;
     isLoading: boolean;
     error: Error | null;
     data: {
@@ -43,13 +39,13 @@ export function useInitializeNewWorld(): UseInitializeWorldResult {
     
     const dispatch = useDispatch();
     
-    const initializeWorld = async (params: InitializeWorldParams) => {
+    const initializeWorld = async () => {
         setIsLoading(true);
         setError(null);
         
         try {
-            // Call the Server Action directly
-            const result = await initializeNewWorld(params);
+            // Call the Server Action without params
+            const result = await initializeNewWorld();
             
             // Update Redux store with the results
             dispatch(setWorldPda(result.worldPda));

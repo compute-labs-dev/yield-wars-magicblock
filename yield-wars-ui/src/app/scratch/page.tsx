@@ -1,7 +1,6 @@
 "use client";
 import { ScratchToReveal } from "@/components/ui/ScratchToReveal";
-import { Keypair, PublicKey, Transaction, Connection, VersionedTransaction } from '@solana/web3.js';
-import { BN } from "@coral-xyz/anchor";
+import { Keypair, PublicKey, Connection, VersionedTransaction } from '@solana/web3.js';
 import { BorderBeam } from "@/components/ui/BorderBeam";
 import { TransactionRequestQR } from "@/components/ui/SendTransactionRequest";
 import LoginContainer from "@/components/layout/LoginContainer";
@@ -13,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import GasContainer from "@/components/layout/GasContainer";
 import { useEmptyWallet } from "@/hooks/useEmptyWallet";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useInitializeUserWallet } from "@/hooks/program/useInitializeUserWallet";
 import { useTransferCurrency } from "@/hooks/program/useTransferCurrency";
 import { useExchangeCurrency } from "@/hooks/program/useExchangeCurrency";
@@ -27,31 +26,13 @@ import {
 import { useMagicBlockEngine } from "@/engine/MagicBlockEngineProvider";
 import { 
     componentWallet, 
-    componentPrice, 
-    systemEconomy, 
-    componentOwnership, 
-    getComponentWalletOnChain, 
-    getComponentOwnershipOnChain 
+    getComponentWalletOnChain
 } from "@/lib/constants/programIds";
 import { useDispatch, useSelector } from 'react-redux';
-import { selectUserEntity, setCurrentEntity, setUserEntity } from '@/stores/features/userEntityStore';
-import { RootState } from '@/stores/store';
 import { useInitializeNewWorld } from '@/hooks/program/useInitializeNewWorld';
 import { selectIsWorldInitialized, selectWorldPda, resetWorld } from '@/stores/features/worldStore';
 
-interface WorldInitData {
-    worldPda: string;
-    currencyEntities: {
-        [key in CurrencyType]?: {
-            entityPda: string;
-            pricePda: string;
-        };
-    };
-}
-
 export default function ScratchPage() {
-    // Always declare all hooks at the top level, before any conditional logic
-    const [isClient, setIsClient] = useState(false);
     const [initializedUserEntityPda, setInitializedUserEntityPda] = useState<string>("");
     const [worldPdaInit, setWorldPdaInit] = useState<string>("EEfArU3WrMMf1KqYFNbegu63xx2FMfrkGS7A4uCXzrnq");
     const [transferSourceEntity, setTransferSourceEntity] = useState<string>("");
@@ -63,31 +44,21 @@ export default function ScratchPage() {
     const [exchangeDestCurrency, setExchangeDestCurrency] = useState<CurrencyType>(CurrencyType.BTC);
     const [exchangeAmount, setExchangeAmount] = useState<string>("10");
     const [priceComponentPdas, setPriceComponentPdas] = useState<{[key in CurrencyType]?: string}>({});
-    const [worldInitData, setWorldInitData] = useState<WorldInitData | null>(null);
-
-    // Always use non-conditional hooks first
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
 
     // Component hooks that don't depend on React-Redux
     const engine = useMagicBlockEngine();
     const { user, ready, authenticated } = usePrivy();
     const { signTransaction: privySignTransactionDirect } = useSignTransaction();
-    const { signAndSend, processing, receipt } = useSignAndSendTransaction();
-    const solanaConnection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
+    const { signAndSend } = useSignAndSendTransaction();
     const reference = Keypair.generate().publicKey;
     const { emptyWallet } = useEmptyWallet();
     
     // React-Redux hooks that should only be used on the client
     const dispatch = useDispatch();
-    const userEntity = useSelector((state: RootState) => 
-        user?.wallet?.address ? selectUserEntity(state, user.wallet.address) : null
-    );
+
 
     // Hooks for wallet operations
     const { 
-        initializeWallet, 
         initializeWalletAsync,
         isLoading: isLoadingInitWallet, 
         data: initWalletData 
@@ -95,8 +66,6 @@ export default function ScratchPage() {
     const { 
         transferCurrency, 
         isLoading: isLoadingTransfer,
-        error: transferError,
-        isError: isTransferError 
     } = useTransferCurrency();
     const { 
         exchangeCurrency, 
@@ -125,21 +94,89 @@ export default function ScratchPage() {
         }
     }, [initWalletData]);
 
+    // Wrap getWorldData in useCallback
+    const getWorldData = useCallback(async () => {
+        try {
+            const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
+            
+            // Log current user for debugging
+            console.log("Current user wallet address:", user?.wallet?.address);
+            
+            if (!user?.wallet?.address) {
+                console.warn("User wallet address is undefined! Cannot check ownership.");
+                return;
+            }
+
+            const world = await World.fromAccountAddress(
+                connection,
+                new PublicKey(worldPdaInit),
+                "confirmed"
+            );
+            console.log("World: ", world.entities.length);
+            console.log('World entities: ', Number(world.entities));
+            
+            let entityId = world.entities;
+            let found = false;
+            
+            while (!entityId.isNeg() && !found) {
+                const entityPda = FindEntityPda({
+                    worldId: world.id,
+                    entityId: entityId
+                });
+                console.log("Checking Entity PDA:", entityPda.toBase58());
+                
+                try {
+                    const walletPda = FindComponentPda({
+                        componentId: new PublicKey(componentWallet.address),
+                        entity: entityPda,
+                    });
+                    
+                    const walletInfo = await connection.getAccountInfo(walletPda);
+                    if (walletInfo) {
+                        console.log("Found wallet component at:", walletPda.toBase58());
+                        
+                        try {
+                            const walletCoder = getComponentWalletOnChain(engine).coder;
+                            const wallet = walletCoder.accounts.decode("wallet", walletInfo.data);
+                            
+                            if (wallet && wallet.boltMetadata && wallet.boltMetadata.authority) {
+                                const ownerAddress = wallet.boltMetadata.authority.toBase58();
+                                console.log("Wallet component owned by:", ownerAddress);
+                                
+                                if (ownerAddress === user.wallet.address) {
+                                    console.log("🎯 MATCH FOUND! Entity belongs to current user:", entityPda.toBase58());
+                                    setInitializedUserEntityPda(entityPda.toBase58());
+                                    found = true;
+                                    break;
+                                } else {
+                                    console.log("Entity owned by different address:", ownerAddress);
+                                }
+                            }
+                        } catch (error) {
+                            console.error("Error decoding wallet component:", error);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error finding wallet component:", error);
+                }
+                
+                entityId = entityId.subn(1);
+            }
+            
+            if (!found) {
+                console.log("No entity found owned by the current user:", user.wallet.address);
+            }
+        } catch (error) {
+            console.error("Error in getWorldData:", error);
+        }
+    }, [user?.wallet?.address, worldPdaInit, engine]);
+
+    // Update useEffect dependencies
     useEffect(() => {
         if (user?.wallet?.address) {
-            if (userEntity) {
-                console.log("Found entity in Redux store:", userEntity.entityPda);
-                setInitializedUserEntityPda(userEntity.entityPda);
-                if (isClient) {
-                    dispatch(setCurrentEntity(userEntity.entityPda));
-                }
-                toast.success("Found your existing wallet");
-            } else {
-                console.log("No entity found in Redux store, trying on-chain detection");
-                getWorldData();
-            }
+            getWorldData();
         }
-    }, [user?.wallet?.address, userEntity, dispatch, isClient]);
+    }, [user?.wallet?.address, getWorldData]);
 
     const handleClaimWinnings = async () => {
         const txn = await fetch(`/api/transaction?network=devnet&reference=${reference.toBase58()}`, {
@@ -183,19 +220,18 @@ export default function ScratchPage() {
             return;
         }
         try {
-            // Use the correct function - mutate instead of mutateAsync if it returns void
             const result = await initializeWalletAsync({ 
                 userPublicKey: user.wallet.address, 
                 worldPda: worldPdaInit 
             });
             
             if (result && result.entityPda) {
-                // Update UI state
                 setInitializedUserEntityPda(result.entityPda);
                 toast.success(`Entity initialized: ${result.entityPda}`);
             }
-        } catch (e: any) { 
-            toast.error("Init wallet failed: " + e.message)
+        } catch (error) { 
+            console.error("Init wallet failed:", error);
+            toast.error(`Init wallet failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
 
@@ -221,8 +257,9 @@ export default function ScratchPage() {
 
             console.log("Transfer params: ", params);
             await transferCurrency(params);
-        } catch (e: any) { 
-            toast.error("Transfer failed: " + e.message)
+        } catch (error) { 
+            console.error("Transfer failed:", error);
+            toast.error(`Transfer failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
 
@@ -281,16 +318,15 @@ export default function ScratchPage() {
             );
             await handleSignAndSendTransaction(transaction);
             toast.success("Exchange transaction sent successfully!");
-        } catch (error: any) {
+        } catch (error) {
             console.error("Exchange failed:", error);
-            toast.error(`Exchange failed: ${error.message}`);
+            toast.error(`Exchange failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
 
     const handleResetWorld = () => {
         dispatch(resetWorld());
         setWorldPdaInit("");
-        setWorldInitData(null);
         toast.success("World state reset successfully");
     };
 
@@ -301,91 +337,6 @@ export default function ScratchPage() {
                 {key}
             </option>
         ));
-
-
-    async function getWorldData() {
-        try {
-            const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
-            
-            // Log current user for debugging
-            console.log("Current user wallet address:", user?.wallet?.address);
-            
-            if (!user?.wallet?.address) {
-                console.warn("User wallet address is undefined! Cannot check ownership.");
-                return;
-            }
-
-            const world = await World.fromAccountAddress(
-                solanaConnection,
-                new PublicKey(worldPdaInit),
-                "confirmed"
-            );
-            console.log("World: ", world.entities.length);
-            console.log('World entities: ', Number(world.entities));
-            
-            // The approach here needs to be simplified - look for ALL components that are owned by the user
-            // Each component has a boltMetadata.authority field that indicates who owns it
-            let entityId = world.entities;
-            let found = false;
-            
-            while (!entityId.isNeg() && !found) {
-                const entityPda = FindEntityPda({
-                    worldId: world.id,
-                    entityId: entityId
-                });
-                console.log("Checking Entity PDA:", entityPda.toBase58());
-                
-                // First, check if the entity has any components
-                try {
-                    // Try to get the wallet component - if it exists, we can check its boltMetadata
-                    const walletPda = FindComponentPda({
-                        componentId: new PublicKey(componentWallet.address),
-                        entity: entityPda,
-                    });
-                    
-                    const walletInfo = await connection.getAccountInfo(walletPda);
-                    if (walletInfo) {
-                        console.log("Found wallet component at:", walletPda.toBase58());
-                        
-                        try {
-                            // Decode the wallet component
-                            const walletCoder = getComponentWalletOnChain(engine).coder;
-                            const wallet = walletCoder.accounts.decode("wallet", walletInfo.data);
-                            
-                            // Check the boltMetadata.authority
-                            if (wallet && wallet.boltMetadata && wallet.boltMetadata.authority) {
-                                const ownerAddress = wallet.boltMetadata.authority.toBase58();
-                                console.log("Wallet component owned by:", ownerAddress);
-                                
-                                // Compare with the current user's wallet
-                                if (ownerAddress === user.wallet.address) {
-                                    console.log("🎯 MATCH FOUND! Entity belongs to current user:", entityPda.toBase58());
-                                    setInitializedUserEntityPda(entityPda.toBase58());
-                                    found = true;
-                                    break;
-                                } else {
-                                    console.log("Entity owned by different address:", ownerAddress);
-                                }
-                            }
-                        } catch (error) {
-                            console.error("Error decoding wallet component:", error);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error finding wallet component:", error);
-                }
-                
-                // If we're still looking, decrement the entity ID to check the next one
-                entityId = entityId.subn(1);
-            }
-            
-            if (!found) {
-                console.log("No entity found owned by the current user:", user.wallet.address);
-            }
-        } catch (error) {
-            console.error("Error in getWorldData:", error);
-        }
-    }
 
     const handleSignAndSendTransaction = async (transaction: VersionedTransaction) => {
         const receipt = await signAndSend(transaction);
@@ -398,8 +349,8 @@ export default function ScratchPage() {
     }
 
     useEffect(() => {
-        getWorldData()
-    }, [user?.wallet?.address])
+        getWorldData();
+    }, [getWorldData]);
 
     const handleInitializeWorld = async () => {
         if (!user?.wallet?.address) {
@@ -407,11 +358,13 @@ export default function ScratchPage() {
             return;
         }
         try {
-            await initializeWorld({ 
-                userPublicKey: user.wallet.address 
-            });
-        } catch (e: any) {
-            console.error("Failed to initialize world:", e);
+            await initializeWorld();
+        } catch (e: unknown) {
+            if (e instanceof Error) {
+                console.error("Failed to initialize world:", e.message);
+            } else {
+                console.error("Failed to initialize world:", e);
+            }
         }
     };
 

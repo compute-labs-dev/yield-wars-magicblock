@@ -7,6 +7,7 @@ import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solan
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
 const SESSION_MAX_LAMPORTS = 0.05 * 1_000_000_000;
+const DEFAULT_ENDPOINT = process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.devnet.solana.com";
 
 const MagicBlockEngineContext = React.createContext<MagicBlockEngine>(
   {} as MagicBlockEngine
@@ -79,7 +80,8 @@ function MagicBlockEngineProviderInner({
       {
         minLamports: SESSION_MIN_LAMPORTS,
         maxLamports: SESSION_MAX_LAMPORTS,
-      }
+      },
+      DEFAULT_ENDPOINT
     );
   }, [isClient, sessionKey, privy, solanaWallets, signTransaction]);
 
