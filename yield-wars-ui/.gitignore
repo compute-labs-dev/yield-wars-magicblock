@@ -41,4 +41,4 @@ yarn-error.log*
 next-env.d.ts
 
 
-wallet.json
+test-wallet.json
