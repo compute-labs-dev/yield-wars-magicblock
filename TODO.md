@@ -121,6 +121,20 @@
 - [ ] Deploy to Solana mainnet
 - [ ] Launch public frontend
 
+### Phase 7: SOAR Leaderboard Integration
+- [x] Add SOAR dependencies to project
+- [x] Create LeaderboardSystem to calculate player wealth
+- [x] Implement wealth calculation function
+- [x] Create CPI interface to SOAR program
+- [x] Create setup script for game and leaderboard registration
+- [ ] Create front-end utilities for SOAR integration
+- [ ] Add leaderboard UI component
+- [x] Add test for wealth calculation
+- [ ] Complete SOAR player registration flow
+- [ ] Implement automatic score submission mechanism
+- [ ] Integrate leaderboard display in main UI
+- [ ] Add player profile display
+
 ## Working Notes
 
 ### Bolt System Implementation 6-Step Plan
@@ -447,3 +461,27 @@ Lessons learned:
     - ASSIGN_TO_WALLET = 1: Adds an entity to an owner's possession
     - REMOVE_OWNERSHIP = 2: Removes an owned entity
     - TRANSFER_OWNERSHIP = 3: Transfers an entity between owners
+
+### Learning Notes (continued)
+
+- SOAR Integration:
+  - SOAR requires setting up a game and leaderboards via SDK
+  - Leaderboard submission requires CPI calls from our program
+  - Player registration needs to be done before submitting scores
+  - Each leaderboard needs its own calculation methodology
+  - Our wealth calculation accounts for all currencies at market price
+  - SOAR uses a 6-decimal standard similar to our currency approach
+  - Game signer PDA must be created with the correct seeds and provided to SOAR
+  - Regular update of scores requires either client trigger or on-chain automation
+  - Scores are public and retrievable via SOAR SDK client
+  
+- LeaderboardSystem design:
+  - Uses a Bolt ECS approach similar to other systems
+  - Defines calculation operation and submission operation
+  - Relies on Price component for accurate currency conversions
+  - Handles overflow carefully with checked math operations
+  - Implements proper CPI interface to SOAR
+  - Supports multiple currency types by using price components
+  - Follows the 6-decimal standard for currency values
+  - Provides detailed logs for debugging
+  - Works directly with the Wallet component for balance access
