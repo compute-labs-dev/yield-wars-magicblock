@@ -2,7 +2,7 @@
 
 use bolt_lang::*;
 
-declare_id!("BL5C5RUqP8zE8EY9G1268Z5zvuj6SHRcKcDf7i4Pfv9j");
+declare_id!("FG3FpqgB61FFDAjHa9N1Q2cpGqSnYypcaJL6cTK7MtfV");
 
 #[component]
 #[derive(Default)]

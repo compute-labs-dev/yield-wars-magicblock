@@ -2,7 +2,7 @@
 
 use bolt_lang::*;
 
-declare_id!("4kqUinqtCWkiqpxpdC8FjBmwEFSdckpyMStRPwqEQ1U3");
+declare_id!("DTtX2W21uM3oRdJCSTzmjb5ujvY7i6aA1kbEakeBbrV6");
 
 /// Price component that tracks market values and price history
 ///

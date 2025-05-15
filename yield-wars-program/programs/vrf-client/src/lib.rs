@@ -10,7 +10,7 @@ use ephemeral_vrf_sdk::instructions::create_request_randomness_ix;
 use ephemeral_vrf_sdk::instructions::RequestRandomnessParams;
 use ephemeral_vrf_sdk::rnd::{random_bool, random_u32, random_u8_with_range};
 
-declare_id!("HQUAWY4CM72rw6TqGZW91Q8kZtpfNBx1z1sDqcGDbeFM");
+declare_id!("2LwC4FAQgQfbJvNo5xAVVLbXap1SpnixhyeMejud58Pq");
 
 // Constants for the PDA seeds
 pub const RANDOMNESS_SEED: &[u8] = b"randomness";

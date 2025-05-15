@@ -2,7 +2,7 @@
 
 use bolt_lang::*;
 
-declare_id!("EtUh4iAFPwhUSFPGCjmNdx9M36AiqUHB7QcLNmuyWVox");
+declare_id!("dXEvE23Lv9XX5f6ssDbzbGNQmeomC1Mi4U16EoHA3pY");
 
 /// Upgradeable component that defines upgrade capabilities for entities
 ///

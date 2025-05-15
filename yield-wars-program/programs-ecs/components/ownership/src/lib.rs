@@ -3,7 +3,7 @@
 use bolt_lang::*;
 use borsh::{BorshDeserialize};
 
-declare_id!("5tnVfBszH3gaVqXgWJ3cNDenZwU1ThwfBHL323SihDaa");
+declare_id!("4M5dU6my7BmVMoAUYmRa3ZnJRMMQzW7e4Yf32wiPh9wS");
 
 /// Ownership component that tracks which entities own other entities
 ///

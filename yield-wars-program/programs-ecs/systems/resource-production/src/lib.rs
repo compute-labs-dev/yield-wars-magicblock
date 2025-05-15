@@ -4,7 +4,7 @@ use bolt_lang::*;
 use production::Production;
 use wallet::Wallet;
 
-declare_id!("3Erv5Y7amyL9MNGy83HAVaQaAohQZF9qC6faHrcE58Ez");
+declare_id!("3R1a64ew4wk5MnA4Vit16twiP8UvYQ92ajXqxrP7sdBr");
 
 /// ResourceProduction system handles resource generation and collection
 ///

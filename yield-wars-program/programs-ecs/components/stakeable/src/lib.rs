@@ -2,7 +2,7 @@
 
 use bolt_lang::*;
 
-declare_id!("7kx8P61SHK4uAzxCQuHw25WC9vnKYbWsepSMnES5muT9");
+declare_id!("6ewq3Rkx3c2kLu9qq46fCNS9ZhBshzskCEAgX7WspkVQ");
 
 /// Stakeable component that enables staking functionality for entities
 ///

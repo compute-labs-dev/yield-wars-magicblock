@@ -25,4 +25,4 @@ bolt-lang.workspace = true
 serde = { version = "1.0", features = ["derive"] }
 lottery-prize = { version = "0.2.2", path = "../../components/lottery-prize", features = ["cpi"] }
 wallet = { version = "0.2.2", path = "../../components/wallet", features = ["cpi"] }
-ephemeral-vrf-sdk = { path = "/Users/marcelofeitoza/Development/solana/compute-labs/ephemeral-vrf/sdk", features = ["anchor"] }
+ephemeral-vrf-sdk = { version = "0.1.2", features = ["anchor"] }
