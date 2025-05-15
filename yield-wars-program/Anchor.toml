@@ -43,6 +43,16 @@ address = "WorLD15A7CrDwLcLy4fRqtaTb9fbd8o8iqiEMUDse2n"
 program = "tests/fixtures/world.so"
 upgradeable = false
 
+[[test.genesis]]
+address = "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+program = "tests/fixtures/ephemeral_vrf_program.so"
+upgradeable = false
+
+[[test.genesis]]
+address = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+program = "tests/fixtures/dlp.so"
+upgradeable = false
+
 [test.validator]
 bind_address = "0.0.0.0"
 url = "https://rpc.magicblock.app/devnet/"
@@ -52,3 +62,15 @@ rpc_port = 8899
 [[test.validator.account]]
 address = "EHLkWwAT9oebVv9ht3mtqrvHhRVMKrt54tF3MfHTey2K"
 filename = "tests/fixtures/registry.json"
+
+[[test.validator.account]]
+address = "GKE6d7iv8kCBrsxr78W3xVdjGLLLJnxsGiuzrsZCGEvb"
+filename = "tests/fixtures/oracles.json"
+
+[[test.validator.account]]
+address = "CXMc1eCiEp9YXjanBNB6HUvbWCmxeVmhcR3bPXw8exJA"
+filename = "tests/fixtures/oracle_data.json"
+
+[[test.validator.account]]
+address = "GKE6d7iv8kCBrsxr78W3xVdjGLLLJnxsGiuzrsZCGEvb"
+filename = "tests/fixtures/oracle_queue.json"
