@@ -1,6 +1,6 @@
 use bolt_lang::*;
 
-declare_id!("Fb1XCkDHRcTedV7UEU4yjMbytqC3HJzqxRwobnLAsipE");
+declare_id!("4xUdb6YrCjMeXNFJXXEpHxKVsYoHcRKYFn7Ehz5s8xN9");
 
 /// LotteryPrize component that tracks lottery properties and prize information
 ///

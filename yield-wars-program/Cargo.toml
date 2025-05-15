@@ -8,6 +8,7 @@ resolver = "2"
 
 [workspace.dependencies]
 bolt-lang = "0.2.2"
+soar-cpi = { version = "0.1.0", features = ["cpi"] }
 
 [profile.release]
 overflow-checks = true

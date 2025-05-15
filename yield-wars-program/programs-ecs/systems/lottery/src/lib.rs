@@ -5,7 +5,7 @@ use wallet::Wallet;
 
 mod instructions;
 
-declare_id!("j7CSfnnbmg6uq45Z6gMsJE26YNSa3YvVRrBJZ3EJbaP");
+declare_id!("A3Cr4W7xT1QFH23CxGqMe5uYZKzSLEwT8JsjdswSRMrx");
 
 pub const AIFI_TO_USDC_RATIO: u64 = 5; // 5 USDC per AiFi
 

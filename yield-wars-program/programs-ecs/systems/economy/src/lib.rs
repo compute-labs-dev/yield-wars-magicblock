@@ -4,7 +4,7 @@ use bolt_lang::*;
 use wallet::Wallet;
 use price::Price;
 
-declare_id!("G1mxe2u3yQEAM1fzqE6F3WL44QbMSnomfLqRyKpHo6Xs");
+declare_id!("CqPDvk7AJ7hVYsEvuFUDkZgYjnn5zy5YWEyinkRdFGb1");
 
 /// EconomySystem handles all currency transactions and exchanges
 ///

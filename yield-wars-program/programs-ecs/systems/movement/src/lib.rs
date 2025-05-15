@@ -3,7 +3,7 @@
 use bolt_lang::*;
 use position::Position;
 
-declare_id!("H4z5teSN2Lc4hNyFcTdmWb8EBxyRXUqtBRNV2jdqxFUo");
+declare_id!("FUj6R1Pbh7LcKMvP6CLQVuHV5ctpDC99pL5bjHGitjSZ");
 
 #[system]
 pub mod movement {
