@@ -1,28 +1,22 @@
 [package]
-name = "lottery"
-version = "0.2.3"
-description = "Created with Bolt"
+name = "vrf-client"
+version = "0.1.0"
+description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "lottery"
+name = "vrf_client"
 
 [features]
+default = []
+cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
-idl-build = ["bolt-lang/idl-build"]
-anchor-debug = ["bolt-lang/anchor-debug"]
-custom-heap = []
-custom-panic = []
+idl-build = ["anchor-lang/idl-build"]
 
 
 [dependencies]
-bolt-lang.workspace = true
-serde = { version = "1.0", features = ["derive"] }
-lottery-prize = { version = "0.2.2", path = "../../components/lottery-prize", features = ["cpi"] }
-wallet = { version = "0.2.2", path = "../../components/wallet", features = ["cpi"] }
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 ephemeral-vrf-sdk = { version = "0.1.2", features = ["anchor"] }

@@ -28,10 +28,13 @@ describe("Lottery Tests", () => {
   // Common variables used across tests
   let worldPda: PublicKey;
   let entityPda: PublicKey;
+  let entity2Pda: PublicKey;
   let lotteryEntity: PublicKey;
   let walletComponentPda: PublicKey;
   let lotteryPrizeComponentPda: PublicKey;
-
+  let usdcPriceComponentPda: PublicKey;
+  let aifiPriceComponentPda: PublicKey;
+  
   const walletComponent = anchor.workspace.Wallet as Program<Wallet>;
   const lotteryPrizeComponent = anchor.workspace.LotteryPrize as Program<LotteryPrize>;
   const systemLottery = anchor.workspace.Lottery as Program<Lottery>;
@@ -94,7 +97,7 @@ describe("Lottery Tests", () => {
         transaction_type: 2, // INITIALIZE
         currency_type: CURRENCY_TYPE.USDC,
         destination_currency_type: CURRENCY_TYPE.USDC,
-        amount: 1000000000 // 1000 USDC
+        amount: 6000000000 // 6000 USDC
       };
 
       let applySystem = await ApplySystem({
@@ -114,38 +117,238 @@ describe("Lottery Tests", () => {
       });
 
       let txSign = await provider.sendAndConfirm(applySystem.transaction as any);
-      console.log(`Added 1000 USDC to wallet. Signature: ${txSign}`);
+      console.log(`Added 6000 USDC to wallet. Signature: ${txSign}`);
+      
+      // Verify funds were added successfully
+      const walletBalance = await walletComponent.account.wallet.fetch(walletComponentPda);
+      console.log(`Wallet balance: ${walletBalance.usdcBalance.toNumber() / 1000000} USDC, ${walletBalance.aifiBalance.toNumber() / 1000000} AiFi`);
 
-      // Add AiFi
-      const addAifiArgs = {
-        transaction_type: 2, // INITIALIZE
-        currency_type: CURRENCY_TYPE.AIFI,
-        destination_currency_type: CURRENCY_TYPE.AIFI,
-        amount: 1000000000 // 1000 AiFi
+      // Exchange 5000 USDC for AiFi
+      console.log("Setting up AiFi price component and exchanging USDC for AiFi...");
+
+      // First add a price component for AiFi (on a new entity)
+      const addAiFiEntity = await AddEntity({
+        payer: provider.wallet.publicKey,
+        world: worldPda,
+        connection: provider.connection as any,
+      });
+      const aiFiEntityPda = addAiFiEntity.entityPda;
+      await provider.sendAndConfirm(addAiFiEntity.transaction as any);
+
+      const initAiFiPriceComp = await InitializeComponent({
+        payer: provider.wallet.publicKey,
+        entity: aiFiEntityPda,
+        componentId: priceComponent.programId,
+      });
+
+      const aiFiPriceComponentPda = initAiFiPriceComp.componentPda;
+      await provider.sendAndConfirm(initAiFiPriceComp.transaction as any);
+
+      // Initialize price components for USDC and AiFi with PriceAction system
+      const systemPriceAction = anchor.workspace.PriceAction;
+
+      // Initialize USDC price first
+      const initUsdcPriceArgs = {
+        operation_type: 0, // INITIALIZE operation
+        currency_type: CURRENCY_TYPE.USDC,
+        price: 1000000, // $1.00 (using 6 decimal places)
+        min_price: 950000, // $0.95
+        max_price: 1050000, // $1.05
+        volatility: 100, // 1% volatility (in basis points)
+        update_frequency: 3600 // Update once per hour (in seconds)
       };
 
-      applySystem = await ApplySystem({
+      // Apply the PriceAction system to initialize USDC price
+      let priceActionSystem = await ApplySystem({
         authority: provider.wallet.publicKey,
-        systemId: systemEconomy.programId,
+        systemId: systemPriceAction.programId,
         world: worldPda,
         entities: [{
           entity: entityPda,
           components: [
-            { componentId: walletComponent.programId },
-            { componentId: walletComponent.programId },
-            { componentId: priceComponent.programId },
             { componentId: priceComponent.programId },
           ],
         }],
-        args: addAifiArgs,
+        args: initUsdcPriceArgs,
       });
 
-      txSign = await provider.sendAndConfirm(applySystem.transaction as any);
-      console.log(`Added 1000 AiFi to wallet. Signature: ${txSign}`);
+      await provider.sendAndConfirm(priceActionSystem.transaction as any, undefined, { skipPreflight: true });
+      console.log("Initialized USDC price component");
 
-      // Verify funds were added successfully
-      const walletBalance = await walletComponent.account.wallet.fetch(walletComponentPda);
-      console.log(`Wallet balance: ${walletBalance.usdcBalance.toNumber() / 1000000} USDC, ${walletBalance.aifiBalance.toNumber() / 1000000} AiFi`);
+      // Initialize AiFi price with a 5:1 USDC to AiFi ratio
+      const initAiFiPriceArgs = {
+        operation_type: 0, // INITIALIZE operation
+        currency_type: CURRENCY_TYPE.AIFI,
+        price: 5150000, // $5.15 (using 6 decimal places) - for 5:1 ratio with USDC
+        min_price: 4000000, // $4.00
+        max_price: 6000000, // $6.00
+        volatility: 100, // 1% volatility
+        update_frequency: 3600 // Update once per hour
+      };
+
+      // Apply the PriceAction system to initialize AiFi price
+      priceActionSystem = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemPriceAction.programId,
+        world: worldPda,
+        entities: [{
+          entity: aiFiEntityPda,
+          components: [
+            { componentId: priceComponent.programId },
+          ],
+        }],
+        args: initAiFiPriceArgs,
+      });
+
+      await provider.sendAndConfirm(priceActionSystem.transaction as any, undefined, { skipPreflight: true });
+      console.log("Initialized AiFi price component");
+
+      // Enable price updates for both components
+      const enableUsdcPriceArgs = {
+        operation_type: 1, // ENABLE operation
+        currency_type: CURRENCY_TYPE.USDC,
+        price: 0, // Not used for enable operation
+        min_price: 0,
+        max_price: 0,
+        volatility: 0,
+        update_frequency: 0
+      };
+
+      priceActionSystem = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemPriceAction.programId,
+        world: worldPda,
+        entities: [{
+          entity: entityPda,
+          components: [
+            { componentId: priceComponent.programId },
+          ],
+        }],
+        args: enableUsdcPriceArgs,
+      });
+
+      await provider.sendAndConfirm(priceActionSystem.transaction as any);
+
+      // Enable AiFi price updates
+      const enableAiFiPriceArgs = {
+        operation_type: 1, // ENABLE operation
+        currency_type: CURRENCY_TYPE.AIFI, 
+        price: 0,
+        min_price: 0,
+        max_price: 0,
+        volatility: 0,
+        update_frequency: 0
+      };
+
+      priceActionSystem = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemPriceAction.programId,
+        world: worldPda,
+        entities: [{
+          entity: aiFiEntityPda,
+          components: [
+            { componentId: priceComponent.programId },
+          ],
+        }],
+        args: enableAiFiPriceArgs,
+      });
+
+      await provider.sendAndConfirm(priceActionSystem.transaction as any);
+      console.log("Price updates enabled for both USDC and AiFi");
+
+      // Update prices before exchange
+      const updateUsdcPriceArgs = {
+        operation_type: 2, // UPDATE operation
+        currency_type: CURRENCY_TYPE.USDC,
+        price: 0, // Not used for update
+        min_price: 0,
+        max_price: 0,
+        volatility: 0,
+        update_frequency: 0
+      };
+
+      priceActionSystem = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemPriceAction.programId,
+        world: worldPda,
+        entities: [{
+          entity: entityPda,
+          components: [
+            { componentId: priceComponent.programId },
+          ],
+        }],
+        args: updateUsdcPriceArgs,
+      });
+
+      await provider.sendAndConfirm(priceActionSystem.transaction as any);
+
+      // Update AiFi price
+      const updateAiFiPriceArgs = {
+        operation_type: 2, // UPDATE operation
+        currency_type: CURRENCY_TYPE.AIFI,
+        price: 0, // Not used for update
+        min_price: 0,
+        max_price: 0,
+        volatility: 0,
+        update_frequency: 0
+      };
+
+      priceActionSystem = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemPriceAction.programId,
+        world: worldPda,
+        entities: [{
+          entity: aiFiEntityPda,
+          components: [
+            { componentId: priceComponent.programId },
+          ],
+        }],
+        args: updateAiFiPriceArgs,
+      });
+
+      await provider.sendAndConfirm(priceActionSystem.transaction as any);
+      console.log("Updated prices for both USDC and AiFi");
+
+      // Now perform the exchange of 5000 USDC to AiFi
+      const exchangeAmount = 5000000000; // 5000 USDC
+      console.log(`Exchanging ${exchangeAmount/1000000} USDC for AiFi...`);
+
+      const exchangeArgs = {
+        transaction_type: 1, // EXCHANGE (not TRANSFER which is 0)
+        currency_type: CURRENCY_TYPE.USDC,
+        destination_currency_type: CURRENCY_TYPE.AIFI,
+        amount: exchangeAmount
+      };
+
+      const exchangeSystem = await ApplySystem({
+        authority: provider.wallet.publicKey,
+        systemId: systemEconomy.programId,
+        world: worldPda,
+        entities: [
+          {
+            entity: entityPda,
+            components: [
+              { componentId: walletComponent.programId },   // source_wallet
+              { componentId: walletComponent.programId },   // destination_wallet (same wallet)
+              { componentId: priceComponent.programId },    // USDC price
+            ],
+          },
+          {
+            entity: aiFiEntityPda,
+            components: [
+              { componentId: priceComponent.programId },    // AiFi price
+            ],
+          }
+        ],
+        args: exchangeArgs,
+      });
+
+      txSign = await provider.sendAndConfirm(exchangeSystem.transaction as any);
+      console.log(`Exchange transaction signature: ${txSign}`);
+
+      // Verify the exchange worked
+      const walletAfter = await walletComponent.account.wallet.fetch(walletComponentPda);
+      console.log(`Wallet balance after exchange: ${walletAfter.usdcBalance.toNumber()/1000000} USDC, ${walletAfter.aifiBalance.toNumber()/1000000} AiFi`);
 
     } catch (error) {
       console.error("Failed to add funds to wallet:", error);
@@ -373,8 +576,6 @@ describe("Lottery Tests", () => {
       expect(updatedLotteryPrizeAccount.isActive).to.equal(true);
     });
   });
-
-
 
   describe("Lottery System Tests", () => {
     
