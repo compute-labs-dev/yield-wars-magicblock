@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/ownership.json`.
  */
 export type Ownership = {
-  "address": "5tnVfBszH3gaVqXgWJ3cNDenZwU1ThwfBHL323SihDaa",
+  "address": "HkqdANE6nJugpVSNqzxGHyneYSs4yf2rwSCxNt27N4sE",
   "metadata": {
     "name": "ownership",
     "version": "0.2.2",
@@ -305,9 +305,19 @@ export type Ownership = {
           {
             "name": "ownedEntityTypes",
             "docs": [
-              "Array of entity types corresponding to each owned entity"
+              "Array of entity types corresponding to owned entities"
             ],
             "type": "bytes"
+          },
+          {
+            "name": "ownerEntity",
+            "docs": [
+              "The public key of the entity that owns this entity (if applicable)",
+              "This enables bidirectional ownership tracking"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           },
           {
             "name": "boltMetadata",

@@ -1,19 +1,19 @@
 {
-  "address": "De3S9pgMXPwgMKydcq4TQmRZ4SnADxNC4ixnBrLNsycc",
+  "address": "GnXbKjiapNzMqyx1xZrrKPZurcpiemxFczwK6U3YiPHZ",
   "metadata": {
-    "name": "economy",
+    "name": "market",
     "version": "0.2.2",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
   "docs": [
-    "EconomySystem handles all currency transactions and exchanges",
+    "Market system for asset trading and marketplace functionality",
     "",
-    "This system allows entities to:",
-    "- Transfer currency between wallets",
-    "- Convert between different currencies",
-    "- Apply transaction fees",
-    "- Purchase game assets with currency"
+    "This system allows players to:",
+    "- List assets for sale",
+    "- Purchase assets from other players",
+    "- Manage asset listings",
+    "- Transfer assets between entities"
   ],
   "instructions": [
     {
@@ -46,7 +46,7 @@
     {
       "name": "execute",
       "docs": [
-        "Main execution function for the EconomySystem"
+        "Main execution function for the Market system"
       ],
       "discriminator": [
         130,
@@ -60,16 +60,19 @@
       ],
       "accounts": [
         {
-          "name": "source_wallet"
+          "name": "seller_wallet"
         },
         {
-          "name": "destination_wallet"
+          "name": "buyer_wallet"
         },
         {
-          "name": "source_price"
+          "name": "seller_ownership"
         },
         {
-          "name": "destination_price"
+          "name": "buyer_ownership"
+        },
+        {
+          "name": "price"
         },
         {
           "name": "authority"
@@ -87,6 +90,19 @@
     }
   ],
   "accounts": [
+    {
+      "name": "Ownership",
+      "discriminator": [
+        41,
+        84,
+        101,
+        206,
+        145,
+        175,
+        88,
+        65
+      ]
+    },
     {
       "name": "Price",
       "discriminator": [
@@ -117,38 +133,38 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InsufficientFunds",
-      "msg": "Insufficient funds for transaction"
+      "name": "NotTheOwner",
+      "msg": "Seller is not the owner of this asset"
     },
     {
       "code": 6001,
+      "name": "InvalidPrice",
+      "msg": "Invalid price for listing"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds for purchase"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidPaymentMethod",
+      "msg": "Invalid payment method specified"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidListing",
+      "msg": "Listing not found or invalid"
+    },
+    {
+      "code": 6005,
       "name": "ArithmeticOverflow",
       "msg": "Arithmetic overflow in calculation"
     },
     {
-      "code": 6002,
-      "name": "InvalidCurrencyType",
-      "msg": "Invalid currency type specified"
-    },
-    {
-      "code": 6003,
-      "name": "SameCurrencyExchange",
-      "msg": "Cannot exchange between the same currency"
-    },
-    {
-      "code": 6004,
-      "name": "PriceUpdatesDisabled",
-      "msg": "Price updates are currently disabled"
-    },
-    {
-      "code": 6005,
-      "name": "CurrencyPriceMismatch",
-      "msg": "Currency type does not match price component"
-    },
-    {
       "code": 6006,
-      "name": "ExchangeAmountTooSmall",
-      "msg": "Exchange amount is too small"
+      "name": "InvalidOperation",
+      "msg": "Invalid operation type specified"
     }
   ],
   "types": [
@@ -163,6 +179,62 @@
           {
             "name": "authority",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ownership",
+      "docs": [
+        "Ownership component that tracks which entities own other entities",
+        "",
+        "This component is used to establish ownership relationships between entities in the YieldWars game.",
+        "For example, a player entity can own multiple GPU entities, Data Centers, Land Rights, etc.",
+        "The component stores a list of the public keys of owned entities along with their types."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner_type",
+            "docs": [
+              "The type of the entity this ownership component is attached to"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "owned_entities",
+            "docs": [
+              "Array of owned entity public keys"
+            ],
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "owned_entity_types",
+            "docs": [
+              "Array of entity types corresponding to owned entities"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "owner_entity",
+            "docs": [
+              "The public key of the entity that owns this entity (if applicable)",
+              "This enables bidirectional ownership tracking"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
+              }
+            }
           }
         ]
       }

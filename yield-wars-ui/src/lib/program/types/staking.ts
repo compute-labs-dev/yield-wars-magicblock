@@ -2,24 +2,25 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/upgrade.json`.
+ * IDL can be found at `target/idl/staking.json`.
  */
-export type Upgrade = {
-  "address": "C5rv7atbb2NxYS2yhfTci67yKwrWKJ3d1jKhAUMAtLur",
+export type Staking = {
+  "address": "4KJivmH7mWGYxePrBSmuCeTNJfwGiYfDWvGY5tnwdqRn",
   "metadata": {
-    "name": "upgrade",
+    "name": "staking",
     "version": "0.2.2",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
   "docs": [
-    "Upgrade system for handling entity upgrades",
+    "Staking system for handling entity staking operations",
     "",
     "This system allows entities to:",
-    "- Initialize upgrade properties",
-    "- Perform upgrades",
-    "- Apply upgrade benefits to production",
-    "- Update upgrade costs for the next level"
+    "- Initialize staking properties",
+    "- Stake entities for enhanced rewards",
+    "- Unstake entities (with potential penalties for early unstaking)",
+    "- Collect accumulated staking rewards",
+    "- Update staking parameters"
   ],
   "instructions": [
     {
@@ -52,7 +53,7 @@ export type Upgrade = {
     {
       "name": "execute",
       "docs": [
-        "Main execution function for the Upgrade system"
+        "Main execution function for the Staking system"
       ],
       "discriminator": [
         130,
@@ -66,7 +67,7 @@ export type Upgrade = {
       ],
       "accounts": [
         {
-          "name": "upgradeable"
+          "name": "stakeable"
         },
         {
           "name": "wallet"
@@ -104,16 +105,16 @@ export type Upgrade = {
       ]
     },
     {
-      "name": "upgradeable",
+      "name": "stakeable",
       "discriminator": [
-        92,
-        9,
-        162,
-        145,
-        129,
-        145,
-        28,
-        204
+        245,
+        80,
+        221,
+        128,
+        208,
+        239,
+        116,
+        162
       ]
     },
     {
@@ -133,38 +134,43 @@ export type Upgrade = {
   "errors": [
     {
       "code": 6000,
-      "name": "alreadyMaxLevel",
-      "msg": "Entity is already at maximum level"
+      "name": "alreadyStaked",
+      "msg": "Entity is already staked"
     },
     {
       "code": 6001,
-      "name": "insufficientUsdcFunds",
-      "msg": "Insufficient USDC funds for upgrade"
+      "name": "notStaked",
+      "msg": "Entity is not staked"
     },
     {
       "code": 6002,
-      "name": "insufficientAifiFunds",
-      "msg": "Insufficient AiFi funds for upgrade"
+      "name": "minimumStakingPeriodNotElapsed",
+      "msg": "Minimum staking period has not elapsed"
     },
     {
       "code": 6003,
-      "name": "upgradeCooldown",
-      "msg": "Upgrade cooldown period has not elapsed"
+      "name": "noRewardsAvailable",
+      "msg": "No rewards available to claim"
     },
     {
       "code": 6004,
-      "name": "cannotUpgrade",
-      "msg": "This entity cannot be upgraded"
+      "name": "cannotClaimRewards",
+      "msg": "Cannot claim rewards at this time"
     },
     {
       "code": 6005,
+      "name": "arithmeticOverflow",
+      "msg": "Arithmetic overflow in calculation"
+    },
+    {
+      "code": 6006,
       "name": "invalidOperation",
       "msg": "Invalid operation type specified"
     },
     {
-      "code": 6006,
-      "name": "arithmeticOverflow",
-      "msg": "Arithmetic overflow in calculation"
+      "code": 6007,
+      "name": "invalidTimestamp",
+      "msg": "Invalid timestamp provided"
     }
   ],
   "types": [
@@ -269,86 +275,100 @@ export type Upgrade = {
       }
     },
     {
-      "name": "upgradeable",
+      "name": "stakeable",
       "docs": [
-        "Upgradeable component that defines upgrade capabilities for entities",
+        "Stakeable component that enables staking functionality for entities",
         "",
-        "This component is attached to entities that can be upgraded, such as GPUs and Data Centers.",
-        "It tracks the current level, maximum possible level, and stores required upgrade costs.",
-        "The upgrade costs define the amount of resources needed for each level upgrade."
+        "This component is attached to entities that can be staked, such as GPUs.",
+        "Staking locks an entity for a period of time, during which it generates bonus rewards.",
+        "Early unstaking may incur a penalty based on the configured rates."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "currentLevel",
+            "name": "isStaked",
             "docs": [
-              "Current level of the entity (starts at 1)"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "maxLevel",
-            "docs": [
-              "Maximum level this entity can reach"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "lastUpgradeTime",
-            "docs": [
-              "Last time this entity was upgraded (Unix timestamp)"
-            ],
-            "type": "i64"
-          },
-          {
-            "name": "canUpgrade",
-            "docs": [
-              "Whether entity can be upgraded further"
+              "Whether the entity is currently staked"
             ],
             "type": "bool"
           },
           {
-            "name": "upgradeableType",
+            "name": "stakingStartTime",
             "docs": [
-              "Type of the upgradeable entity (uses same enum as Ownership component)"
+              "Unix timestamp when the entity was staked"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "minStakingPeriod",
+            "docs": [
+              "Minimum staking period in seconds before rewards can be claimed without penalty"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "rewardRate",
+            "docs": [
+              "Reward rate (100 = 1%, 500 = 5%, etc.)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "unstakingPenalty",
+            "docs": [
+              "Penalty rate for early unstaking (100 = 1%, 500 = 5%, etc.)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "accumulatedUsdcRewards",
+            "docs": [
+              "Accumulated USDC rewards (calculated at claim time)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "accumulatedAifiRewards",
+            "docs": [
+              "Accumulated AiFi rewards (calculated at claim time)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lastClaimTime",
+            "docs": [
+              "Last time rewards were claimed (Unix timestamp)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "stakeableType",
+            "docs": [
+              "Type of the stakeable entity (uses same enum as Ownership component)"
             ],
             "type": "u8"
           },
           {
-            "name": "nextUpgradeUsdcCost",
+            "name": "canClaimRewards",
             "docs": [
-              "USDC cost for the next upgrade"
+              "Whether rewards can be claimed (might be locked during certain periods)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "baseUsdcPerHour",
+            "docs": [
+              "Base USDC per hour used for reward calculations"
             ],
             "type": "u64"
           },
           {
-            "name": "nextUpgradeAifiCost",
+            "name": "baseAifiPerHour",
             "docs": [
-              "AiFi cost for the next upgrade"
+              "Base AiFi per hour used for reward calculations"
             ],
             "type": "u64"
-          },
-          {
-            "name": "upgradeCooldown",
-            "docs": [
-              "Cooldown between upgrades in seconds"
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "nextUsdcBoost",
-            "docs": [
-              "Production boost percentage for USDC after next upgrade (10000 = 100%)"
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "nextAifiBoost",
-            "docs": [
-              "Production boost percentage for AiFi after next upgrade (10000 = 100%)"
-            ],
-            "type": "u32"
           },
           {
             "name": "boltMetadata",

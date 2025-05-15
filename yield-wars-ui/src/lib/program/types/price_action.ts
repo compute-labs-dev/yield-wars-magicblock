@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/price_action.json`.
  */
 export type PriceAction = {
-  "address": "4qjf6jiDRxFwTkKKy6hPS5NP5rKK9KEFCEGQAGFfLgs8",
+  "address": "Gxk26k7gvRs4He2DiPY5DJqhCXQ9knUhMSsKFeyzhGbh",
   "metadata": {
     "name": "priceAction",
     "version": "0.2.2",

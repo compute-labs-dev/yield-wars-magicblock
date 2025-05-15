@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/yield_wars_program.json`.
  */
 export type YieldWarsProgram = {
-  "address": "3gnT2CxCTT6QBZHyqtETVnhxfHBK3wccAYqfxq4Xn8PT",
+  "address": "8ver8mEMz4PW7Mjnf4FLqJjngUMqM9hxFgGsbQhbsjqT",
   "metadata": {
     "name": "yieldWarsProgram",
     "version": "0.2.2",

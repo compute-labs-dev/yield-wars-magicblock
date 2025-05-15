@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/stakeable.json`.
  */
 export type Stakeable = {
-  "address": "7kx8P61SHK4uAzxCQuHw25WC9vnKYbWsepSMnES5muT9",
+  "address": "28PWLf6xJatvEZywjSLaJ6SnkRbGsk95QqiYjc3Bnk4k",
   "metadata": {
     "name": "stakeable",
     "version": "0.2.2",

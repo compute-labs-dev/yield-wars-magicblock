@@ -1,29 +1,24 @@
-/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/upgrade.json`.
- */
-export type Upgrade = {
-  "address": "C5rv7atbb2NxYS2yhfTci67yKwrWKJ3d1jKhAUMAtLur",
+{
+  "address": "4KJivmH7mWGYxePrBSmuCeTNJfwGiYfDWvGY5tnwdqRn",
   "metadata": {
-    "name": "upgrade",
+    "name": "staking",
     "version": "0.2.2",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
   "docs": [
-    "Upgrade system for handling entity upgrades",
+    "Staking system for handling entity staking operations",
     "",
     "This system allows entities to:",
-    "- Initialize upgrade properties",
-    "- Perform upgrades",
-    "- Apply upgrade benefits to production",
-    "- Update upgrade costs for the next level"
+    "- Initialize staking properties",
+    "- Stake entities for enhanced rewards",
+    "- Unstake entities (with potential penalties for early unstaking)",
+    "- Collect accumulated staking rewards",
+    "- Update staking parameters"
   ],
   "instructions": [
     {
-      "name": "boltExecute",
+      "name": "bolt_execute",
       "discriminator": [
         75,
         206,
@@ -52,7 +47,7 @@ export type Upgrade = {
     {
       "name": "execute",
       "docs": [
-        "Main execution function for the Upgrade system"
+        "Main execution function for the Staking system"
       ],
       "discriminator": [
         130,
@@ -66,7 +61,7 @@ export type Upgrade = {
       ],
       "accounts": [
         {
-          "name": "upgradeable"
+          "name": "stakeable"
         },
         {
           "name": "wallet"
@@ -80,7 +75,7 @@ export type Upgrade = {
       ],
       "args": [
         {
-          "name": "args",
+          "name": "_args",
           "type": "bytes"
         }
       ],
@@ -91,7 +86,7 @@ export type Upgrade = {
   ],
   "accounts": [
     {
-      "name": "production",
+      "name": "Production",
       "discriminator": [
         141,
         81,
@@ -104,20 +99,20 @@ export type Upgrade = {
       ]
     },
     {
-      "name": "upgradeable",
+      "name": "Stakeable",
       "discriminator": [
-        92,
-        9,
-        162,
-        145,
-        129,
-        145,
-        28,
-        204
+        245,
+        80,
+        221,
+        128,
+        208,
+        239,
+        116,
+        162
       ]
     },
     {
-      "name": "wallet",
+      "name": "Wallet",
       "discriminator": [
         24,
         89,
@@ -133,43 +128,48 @@ export type Upgrade = {
   "errors": [
     {
       "code": 6000,
-      "name": "alreadyMaxLevel",
-      "msg": "Entity is already at maximum level"
+      "name": "AlreadyStaked",
+      "msg": "Entity is already staked"
     },
     {
       "code": 6001,
-      "name": "insufficientUsdcFunds",
-      "msg": "Insufficient USDC funds for upgrade"
+      "name": "NotStaked",
+      "msg": "Entity is not staked"
     },
     {
       "code": 6002,
-      "name": "insufficientAifiFunds",
-      "msg": "Insufficient AiFi funds for upgrade"
+      "name": "MinimumStakingPeriodNotElapsed",
+      "msg": "Minimum staking period has not elapsed"
     },
     {
       "code": 6003,
-      "name": "upgradeCooldown",
-      "msg": "Upgrade cooldown period has not elapsed"
+      "name": "NoRewardsAvailable",
+      "msg": "No rewards available to claim"
     },
     {
       "code": 6004,
-      "name": "cannotUpgrade",
-      "msg": "This entity cannot be upgraded"
+      "name": "CannotClaimRewards",
+      "msg": "Cannot claim rewards at this time"
     },
     {
       "code": 6005,
-      "name": "invalidOperation",
-      "msg": "Invalid operation type specified"
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow in calculation"
     },
     {
       "code": 6006,
-      "name": "arithmeticOverflow",
-      "msg": "Arithmetic overflow in calculation"
+      "name": "InvalidOperation",
+      "msg": "Invalid operation type specified"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidTimestamp",
+      "msg": "Invalid timestamp provided"
     }
   ],
   "types": [
     {
-      "name": "boltMetadata",
+      "name": "BoltMetadata",
       "docs": [
         "Metadata for the component."
       ],
@@ -184,7 +184,7 @@ export type Upgrade = {
       }
     },
     {
-      "name": "production",
+      "name": "Production",
       "docs": [
         "Production component that tracks resource generation rates",
         "",
@@ -198,28 +198,28 @@ export type Upgrade = {
         "kind": "struct",
         "fields": [
           {
-            "name": "usdcPerHour",
+            "name": "usdc_per_hour",
             "docs": [
               "USDC tokens produced per hour"
             ],
             "type": "u64"
           },
           {
-            "name": "aifiPerHour",
+            "name": "aifi_per_hour",
             "docs": [
               "AiFi tokens produced per hour"
             ],
             "type": "u64"
           },
           {
-            "name": "lastCollectionTime",
+            "name": "last_collection_time",
             "docs": [
               "Timestamp of the last resource collection (Unix timestamp)"
             ],
             "type": "i64"
           },
           {
-            "name": "efficiencyMultiplier",
+            "name": "efficiency_multiplier",
             "docs": [
               "Efficiency multiplier applied to production rates (10000 = 100%)",
               "This can be increased by:",
@@ -230,7 +230,7 @@ export type Upgrade = {
             "type": "u32"
           },
           {
-            "name": "producerType",
+            "name": "producer_type",
             "docs": [
               "Type of production entity (uses same enum as Ownership component)"
             ],
@@ -244,24 +244,24 @@ export type Upgrade = {
             "type": "u8"
           },
           {
-            "name": "isActive",
+            "name": "is_active",
             "docs": [
               "Whether production is currently active"
             ],
             "type": "bool"
           },
           {
-            "name": "operatingCost",
+            "name": "operating_cost",
             "docs": [
               "Operating cost per hour in USDC"
             ],
             "type": "u64"
           },
           {
-            "name": "boltMetadata",
+            "name": "bolt_metadata",
             "type": {
               "defined": {
-                "name": "boltMetadata"
+                "name": "BoltMetadata"
               }
             }
           }
@@ -269,92 +269,106 @@ export type Upgrade = {
       }
     },
     {
-      "name": "upgradeable",
+      "name": "Stakeable",
       "docs": [
-        "Upgradeable component that defines upgrade capabilities for entities",
+        "Stakeable component that enables staking functionality for entities",
         "",
-        "This component is attached to entities that can be upgraded, such as GPUs and Data Centers.",
-        "It tracks the current level, maximum possible level, and stores required upgrade costs.",
-        "The upgrade costs define the amount of resources needed for each level upgrade."
+        "This component is attached to entities that can be staked, such as GPUs.",
+        "Staking locks an entity for a period of time, during which it generates bonus rewards.",
+        "Early unstaking may incur a penalty based on the configured rates."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "currentLevel",
+            "name": "is_staked",
             "docs": [
-              "Current level of the entity (starts at 1)"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "maxLevel",
-            "docs": [
-              "Maximum level this entity can reach"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "lastUpgradeTime",
-            "docs": [
-              "Last time this entity was upgraded (Unix timestamp)"
-            ],
-            "type": "i64"
-          },
-          {
-            "name": "canUpgrade",
-            "docs": [
-              "Whether entity can be upgraded further"
+              "Whether the entity is currently staked"
             ],
             "type": "bool"
           },
           {
-            "name": "upgradeableType",
+            "name": "staking_start_time",
             "docs": [
-              "Type of the upgradeable entity (uses same enum as Ownership component)"
+              "Unix timestamp when the entity was staked"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "min_staking_period",
+            "docs": [
+              "Minimum staking period in seconds before rewards can be claimed without penalty"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "reward_rate",
+            "docs": [
+              "Reward rate (100 = 1%, 500 = 5%, etc.)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "unstaking_penalty",
+            "docs": [
+              "Penalty rate for early unstaking (100 = 1%, 500 = 5%, etc.)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "accumulated_usdc_rewards",
+            "docs": [
+              "Accumulated USDC rewards (calculated at claim time)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "accumulated_aifi_rewards",
+            "docs": [
+              "Accumulated AiFi rewards (calculated at claim time)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_claim_time",
+            "docs": [
+              "Last time rewards were claimed (Unix timestamp)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "stakeable_type",
+            "docs": [
+              "Type of the stakeable entity (uses same enum as Ownership component)"
             ],
             "type": "u8"
           },
           {
-            "name": "nextUpgradeUsdcCost",
+            "name": "can_claim_rewards",
             "docs": [
-              "USDC cost for the next upgrade"
+              "Whether rewards can be claimed (might be locked during certain periods)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "base_usdc_per_hour",
+            "docs": [
+              "Base USDC per hour used for reward calculations"
             ],
             "type": "u64"
           },
           {
-            "name": "nextUpgradeAifiCost",
+            "name": "base_aifi_per_hour",
             "docs": [
-              "AiFi cost for the next upgrade"
+              "Base AiFi per hour used for reward calculations"
             ],
             "type": "u64"
           },
           {
-            "name": "upgradeCooldown",
-            "docs": [
-              "Cooldown between upgrades in seconds"
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "nextUsdcBoost",
-            "docs": [
-              "Production boost percentage for USDC after next upgrade (10000 = 100%)"
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "nextAifiBoost",
-            "docs": [
-              "Production boost percentage for AiFi after next upgrade (10000 = 100%)"
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "boltMetadata",
+            "name": "bolt_metadata",
             "type": {
               "defined": {
-                "name": "boltMetadata"
+                "name": "BoltMetadata"
               }
             }
           }
@@ -362,7 +376,7 @@ export type Upgrade = {
       }
     },
     {
-      "name": "wallet",
+      "name": "Wallet",
       "docs": [
         "Wallet component that tracks currency balances for the player",
         "",
@@ -378,45 +392,45 @@ export type Upgrade = {
         "kind": "struct",
         "fields": [
           {
-            "name": "usdcBalance",
+            "name": "usdc_balance",
             "docs": [
               "Balance of USDC (stablecoin), the base currency"
             ],
             "type": "u64"
           },
           {
-            "name": "btcBalance",
+            "name": "btc_balance",
             "docs": [
               "Balance of Bitcoin (BTC)"
             ],
             "type": "u64"
           },
           {
-            "name": "ethBalance",
+            "name": "eth_balance",
             "docs": [
               "Balance of Ethereum (ETH)"
             ],
             "type": "u64"
           },
           {
-            "name": "solBalance",
+            "name": "sol_balance",
             "docs": [
               "Balance of Solana (SOL)"
             ],
             "type": "u64"
           },
           {
-            "name": "aifiBalance",
+            "name": "aifi_balance",
             "docs": [
               "Balance of AiFi tokens"
             ],
             "type": "u64"
           },
           {
-            "name": "boltMetadata",
+            "name": "bolt_metadata",
             "type": {
               "defined": {
-                "name": "boltMetadata"
+                "name": "BoltMetadata"
               }
             }
           }
@@ -424,4 +438,4 @@ export type Upgrade = {
       }
     }
   ]
-};
+}

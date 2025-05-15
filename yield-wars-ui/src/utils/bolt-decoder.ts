@@ -10,8 +10,9 @@ import { PublicKey } from '@solana/web3.js';
 // These are pre-populated with common patterns but will be enhanced dynamically
 // as we encounter components in the wild
 const COMPONENT_DISCRIMINATORS: Record<string, string> = {
-  // These are example values - they'll be updated when actual components are discovered
-  // We'll keep a running map of discriminators we discover
+  // Add the ownership discriminator we found in the logs
+  "295465ce91af5841": "Ownership",
+  // Keep other discriminators if any
 };
 
 // Store discovered discriminators for future use
@@ -63,6 +64,11 @@ interface DecodedData {
   currentPrice?: bigint;
   productionRate?: bigint;
   lastCollectedTimestamp?: bigint;
+  // Add ownership fields
+  ownerType?: number;
+  ownerEntity?: PublicKey;
+  ownedEntities?: PublicKey[];
+  ownedEntityTypes?: number[];
 }
 
 export interface DecodedComponent {
@@ -77,20 +83,20 @@ export function decodeBoltComponent(data: Buffer, programId?: string): DecodedCo
     const discriminator = data.slice(0, 8);
     const discriminatorHex = Buffer.from(discriminator).toString('hex');
     
+    console.log('Decoding component with discriminator:', discriminatorHex);
+    
     // Find component type
     let componentType = 'Unknown';
     
     // First try to look up by discriminator
-    for (const [discPrefix, type] of Object.entries(COMPONENT_DISCRIMINATORS)) {
-      if (discriminatorHex.startsWith(discPrefix)) {
-        componentType = type;
-        break;
-      }
+    if (COMPONENT_DISCRIMINATORS[discriminatorHex]) {
+      componentType = COMPONENT_DISCRIMINATORS[discriminatorHex];
+      console.log('Found component type from discriminator:', componentType);
     }
-    
     // If unknown but we have a program ID, try to determine from program ID
-    if (componentType === 'Unknown' && programId) {
+    else if (programId) {
       componentType = getComponentTypeFromProgramId(programId);
+      console.log('Found component type from program ID:', componentType);
       
       // If we now know the type, save the discriminator for future use
       if (componentType !== 'Unknown') {
@@ -138,6 +144,66 @@ export function decodeBoltComponent(data: Buffer, programId?: string): DecodedCo
         };
       } catch (e) {
         console.log('Error decoding Production component:', e);
+      }
+    } else if (componentType === 'Ownership') {
+      try {
+        // Skip 8 bytes discriminator
+        let offset = 8;
+        
+        // Read owner type (1 byte)
+        const ownerType = data[offset];
+        offset += 1;
+        
+        // Read owner entity (32 bytes)
+        const ownerEntity = new PublicKey(data.slice(offset, offset + 32));
+        offset += 32;
+        
+        // Read owned entities array
+        const ownedEntities: PublicKey[] = [];
+        const ownedEntityTypes: number[] = [];
+        
+        // Read array length (4 bytes)
+        const arrayLength = data.readUInt32LE(offset);
+        offset += 4;
+        
+        console.log('Parsing ownership data:', {
+          ownerType,
+          ownerEntity: ownerEntity.toBase58(),
+          arrayLength,
+          totalLength: data.length
+        });
+        
+        // Read each entity and its type
+        for (let i = 0; i < arrayLength; i++) {
+          if (offset + 32 <= data.length) {
+            const entityPubkey = new PublicKey(data.slice(offset, offset + 32));
+            ownedEntities.push(entityPubkey);
+            offset += 32;
+            
+            if (offset < data.length) {
+              const entityType = data[offset];
+              ownedEntityTypes.push(entityType);
+              offset += 1;
+            }
+          }
+        }
+        
+        decodedData = {
+          ...decodedData,
+          ownerType,
+          ownerEntity,
+          ownedEntities,
+          ownedEntityTypes
+        };
+        
+        console.log('Successfully decoded ownership data:', {
+          ownerType,
+          ownerEntity: ownerEntity.toBase58(),
+          ownedEntities: ownedEntities.map(e => e.toBase58()),
+          ownedEntityTypes
+        });
+      } catch (e) {
+        console.error('Error decoding Ownership component:', e);
       }
     }
     

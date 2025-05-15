@@ -76,6 +76,7 @@ export class MagicBlockEngine {
   getProgramOnChain<T extends Idl>(idl: Record<string, unknown>): Program<T> {
     return new Program<T>(idl as T, { connection: connectionChain });
   }
+
   getProgramOnEphem<T extends Idl>(idl: Record<string, unknown>): Program<T> {
     return new Program<T>(idl as T, { connection: connectionEphem });
   }

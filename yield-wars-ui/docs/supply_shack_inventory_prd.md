@@ -116,3 +116,79 @@ This document outlines the Product Requirements for the "Inventory" tab within t
 
 ---
 This PRD focuses on the management of already-owned assets. The acquisition of new assets will be covered in the "Supply Shack - Asset Shop" PRD. 
+
+## 8. Implementation Progress Update
+
+### 8.1. Completed Features
+
+*   [x] Created core data hooks:
+    *   `useOwnedAssets`: Fetches all productive assets owned by the player
+    *   `useAssetProduction`: Manages resource production for assets
+    *   `useAssetUpgrade`: Manages asset upgrade operations
+    *   `useAssetStaking`: Manages asset staking (placeholder implementation)
+    *   `usePurchaseGpu`: Manages GPU purchase using Economy system
+*   [x] Implemented basic UI components in the scratch page for testing:
+    *   Asset list view showing owned assets
+    *   Asset details panel with production/upgrade/staking information
+    *   Action buttons for controlling production, upgrades, and staking
+    *   Store UI for purchasing GPUs
+*   [x] GPU entity creation functionality:
+    *   Enhanced `initializeNewWorld.ts` to create sample GPU entities with different tiers
+    *   Added Redux store support for GPU entities
+    *   Added full ownership, production, upgrade and stakeable components
+*   [x] GPU purchasing functionality in the UI:
+    *   Created "Store" UI for displaying available GPUs
+    *   Connected the `usePurchaseGpu` hook to UI
+    *   Added detailed GPU cards with pricing and specifications
+    *   Implemented refresh after purchase to display owned assets
+
+### 8.2. Pending Features
+
+*   [ ] Complete error handling based on program test scenarios:
+    *   Production collection while inactive
+    *   Upgrade with insufficient funds
+    *   Cooldown period validation
+    *   Max level checks
+*   [ ] Full staking system integration (currently using placeholders)
+*   [ ] Dedicated Supply Shack page (currently only in scratch page)
+*   [ ] Asset batch operations (if prioritized for v1)
+
+### 8.3. Technical Gaps & Next Steps
+
+1. **Error Handling Refinement**:
+   * Add proper validation for all edge cases demonstrated in program tests
+   * Implement user-friendly error messages and recovery options
+   * Add transaction retry functionality
+   * Add dedicated error components for each type of operation
+
+2. **Staking System Integration**:
+   * Complete the staking system implementation with proper parameters
+   * Implement functionality to calculate accrued rewards
+   * Test staking/unstaking lifecycle
+
+3. **Testing Strategy**:
+   * Continue using the scratch page for rapid testing of functionality
+   * Create proper integration tests once core functionality works
+   * Test edge cases directly (e.g., attempting collection when inactive)
+
+4. **Production Deployment**:
+   * Move from scratch page implementation to dedicated Supply Shack page
+   * Apply proper styling and UX improvements
+   * Add analytics tracking for user interactions
+
+### 8.4. Testing Instructions
+
+To test the current implementation:
+
+1. Navigate to the `/scratch` page
+2. Initialize your user and world if not already done
+3. The "Supply Shack Store" section will display available GPUs for purchase
+4. Select a GPU and click "Purchase" to buy it
+5. After purchasing, the asset will appear in the "Supply Shack Inventory" section
+6. From there, you can:
+   * Toggle production on/off
+   * Collect resources when available
+   * Upgrade the asset (if you have sufficient resources and cooldown has passed)
+   * View detailed information about the asset
+
+Note: You'll need USDC in your wallet to purchase GPUs (the costs are 50, 100, or 200 USDC depending on the tier). 

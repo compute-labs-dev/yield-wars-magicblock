@@ -3,10 +3,12 @@ import { useDispatch } from 'react-redux';
 import { 
     setWorldPda, 
     setCurrencyEntity,
-    setInitialized 
+    setGpuEntities,
+    setInitialized,
+    GpuEntityDetails 
 } from '@/stores/features/worldStore';
 import { toast } from 'sonner';
-import { initializeNewWorld } from '@/app/actions/initializeNewWorld';
+import { initializeNewWorld, logWorldConstants } from '@/app/actions/initializeNewWorld';
 import { CurrencyType } from '@/lib/constants/programEnums';
 
 interface UseInitializeWorldResult {
@@ -21,6 +23,7 @@ interface UseInitializeWorldResult {
                 pricePda: string;
             };
         };
+        gpuEntities?: GpuEntityDetails[];
     } | null;
 }
 
@@ -35,6 +38,7 @@ export function useInitializeNewWorld(): UseInitializeWorldResult {
                 pricePda: string;
             };
         };
+        gpuEntities?: GpuEntityDetails[];
     } | null>(null);
     
     const dispatch = useDispatch();
@@ -46,6 +50,9 @@ export function useInitializeNewWorld(): UseInitializeWorldResult {
         try {
             // Call the Server Action without params
             const result = await initializeNewWorld();
+            
+            // Log the constants for easy copying to consts.ts
+            await logWorldConstants(result);
             
             // Update Redux store with the results
             dispatch(setWorldPda(result.worldPda));
@@ -59,10 +66,30 @@ export function useInitializeNewWorld(): UseInitializeWorldResult {
                 }));
             });
             
+            // Update GPU entities in the store if they were created
+            if (result.gpuEntities && result.gpuEntities.length > 0) {
+                // Add GPU type descriptions based on their order
+                // Assuming the order matches GPU_TYPES in initializeNewWorld.ts
+                const gpuEntitiesWithTypes = result.gpuEntities.map((gpu, index) => {
+                    let type = "Unknown GPU";
+                    if (index === 0) type = "Entry GPU";
+                    else if (index === 1) type = "Standard GPU";
+                    else if (index === 2) type = "Premium GPU";
+                    
+                    return {
+                        ...gpu,
+                        type
+                    };
+                });
+                
+                dispatch(setGpuEntities(gpuEntitiesWithTypes));
+                console.log(`Stored ${gpuEntitiesWithTypes.length} GPU entities in Redux store`);
+            }
+            
             dispatch(setInitialized(true));
             
             setData(result);
-            toast.success('World initialized successfully!');
+            toast.success('World initialized successfully! Constants have been logged to the console - copy them to src/lib/consts.ts to avoid reinitializing in the future.');
             
         } catch (err) {
             const error = err as Error;

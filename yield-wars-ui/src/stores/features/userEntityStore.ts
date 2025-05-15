@@ -4,17 +4,17 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { CurrencyType } from '@/lib/constants/programEnums';
 
 // Define types
-export interface PriceComponentPdas {
-  [CurrencyType.USDC]: string;
-  [CurrencyType.BTC]: string;
-  [CurrencyType.ETH]: string;
-  [CurrencyType.SOL]: string;
-  [CurrencyType.AIFI]: string;
-}
+export type PriceComponentPdas = {
+  [key in CurrencyType]: string;
+};
+
+// Helper type for currency type keys
+export type CurrencyTypeKey = keyof PriceComponentPdas;
 
 interface EntityInfo {
   entityPda: string;
   walletComponentPda: string;
+  ownershipComponentPda: string;
   priceComponentPdas: PriceComponentPdas;
   createdAt: string;
 }
@@ -43,13 +43,15 @@ export const userEntitySlice = createSlice({
         walletAddress: string;
         entityPda: string;
         walletComponentPda: string;
+        ownershipComponentPda: string;
         priceComponentPdas: PriceComponentPdas;
       }>
     ) => {
-      const { walletAddress, entityPda, walletComponentPda, priceComponentPdas } = action.payload;
+      const { walletAddress, entityPda, walletComponentPda, ownershipComponentPda, priceComponentPdas } = action.payload;
       state.entities[walletAddress] = {
         entityPda,
         walletComponentPda,
+        ownershipComponentPda,
         priceComponentPdas,
         createdAt: new Date().toISOString(),
       };
@@ -69,6 +71,15 @@ export const selectUserEntity = (state: { userEntity: UserEntityState }, walletA
 
 export const selectCurrentEntity = (state: { userEntity: UserEntityState }) => 
   state.userEntity.currentEntity;
+
+export const selectUserPriceComponentPdas = (state: { userEntity: UserEntityState }, walletAddress: string) => 
+  state.userEntity.entities[walletAddress]?.priceComponentPdas || null;
+
+export const selectUserPriceComponentPda = (state: { userEntity: UserEntityState }, walletAddress: string, currencyType: CurrencyType) => 
+  state.userEntity.entities[walletAddress]?.priceComponentPdas[currencyType] || null;
+
+export const selectUserOwnershipComponentPda = (state: { userEntity: UserEntityState }, walletAddress: string) => 
+  state.userEntity.entities[walletAddress]?.ownershipComponentPda || null;
 
 // Export reducer
 export default userEntitySlice.reducer; 

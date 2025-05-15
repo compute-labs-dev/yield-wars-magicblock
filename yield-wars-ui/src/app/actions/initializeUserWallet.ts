@@ -6,14 +6,17 @@ import {
   AddEntity,
   InitializeComponent,
   ApplySystem,
-} from '@magicblock-labs/bolt-sdk'; // Assuming this SDK is available server-side and configured
+  FindComponentPda,
+} from '@magicblock-labs/bolt-sdk';
 
 import { 
   componentWallet, 
   componentPrice, 
   systemEconomy, 
   componentOwnership,
-  SYSTEM_PRICE_ACTION_PROGRAM_ID 
+  systemAssignOwnership,
+  SYSTEM_PRICE_ACTION_PROGRAM_ID,
+  getComponentOwnershipOnChain 
 } from '@/lib/constants/programIds';
 import { CurrencyType } from '@/lib/constants/programEnums';
 
@@ -65,6 +68,10 @@ const PRICE_PARAMS = {
   }
 };
 
+// Add after the PRICE_PARAMS constant
+const ENTITY_TYPE_PLAYER = 0; // From EntityType enum in ownership component
+const OPERATION_TYPE_ASSIGN_TO_WALLET = 1; // From OperationType enum in assign-ownership system
+
 interface InitializeUserWalletParams {
   userPublicKey: string;
   worldPda: string; // PDA of the initialized world
@@ -73,6 +80,7 @@ interface InitializeUserWalletParams {
 interface InitializeUserWalletResult {
   entityPda: string;
   walletComponentPda: string;
+  ownershipComponentPda: string;
   priceComponentPdas: PriceComponentPdas;
   initSignatures: string[];
 }
@@ -102,22 +110,35 @@ async function initializePriceComponent(
 ): Promise<{ componentPda: PublicKey, signature: string }> {
     console.log(`Initializing ${CurrencyType[currencyType]} price component...`);
     
-    // 1. Initialize the component account - exactly like the test
+    // 1. Find the unique PDA for this currency type
+    const priceComponentPda = FindComponentPda({
+        componentId: new PublicKey(componentPrice.address),
+        entity: entityPda,
+    });
+    
+    console.log(`Derived price component PDA for ${CurrencyType[currencyType]}: ${priceComponentPda.toBase58()}`);
+    
+    // 2. Initialize the component account
     const initPriceCompResult = await InitializeComponent({
         payer: adminKeypair.publicKey,
         entity: entityPda,
         componentId: new PublicKey(componentPrice.address),
     });
 
-    // Sign and send exactly like the test
+    // Verify the derived PDA matches the initialization result
+    if (priceComponentPda.toBase58() !== initPriceCompResult.componentPda.toBase58()) {
+        throw new Error(`PDA mismatch for ${CurrencyType[currencyType]}: expected ${priceComponentPda.toBase58()} but got ${initPriceCompResult.componentPda.toBase58()}`);
+    }
+
+    // Sign and send
     initPriceCompResult.transaction.feePayer = adminKeypair.publicKey;
     initPriceCompResult.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
     initPriceCompResult.transaction.sign(adminKeypair);
     const initSig = await connection.sendRawTransaction(initPriceCompResult.transaction.serialize());
     await connection.confirmTransaction(initSig);
-    console.log(`Price component account created: ${initPriceCompResult.componentPda.toBase58()}`);
+    console.log(`Price component account created for ${CurrencyType[currencyType]}: ${initPriceCompResult.componentPda.toBase58()}`);
 
-    // 2. Initialize price data - match test file args exactly
+    // 3. Initialize price data
     const initPriceArgs = {
         operation_type: 0, // INITIALIZE
         currency_type: currencyType,
@@ -135,7 +156,7 @@ async function initializePriceComponent(
         entities: [{
             entity: entityPda,
             components: [
-                { componentId: new PublicKey(componentPrice.address) } // Use the program ID like the test
+                { componentId: new PublicKey(componentPrice.address) }
             ],
         }],
         args: initPriceArgs,
@@ -148,12 +169,12 @@ async function initializePriceComponent(
     await connection.confirmTransaction(initDataSig);
     console.log(`Price data initialized for ${CurrencyType[currencyType]}`);
 
-    // 3. Enable price updates - match test file args exactly
+    // 4. Enable price updates
     const enablePriceArgs = {
         operation_type: 1, // ENABLE
         currency_type: currencyType,
-        price: priceParams.price,        // Keep original price
-        min_price: priceParams.min_price, // Keep original bounds
+        price: priceParams.price,
+        min_price: priceParams.min_price,
         max_price: priceParams.max_price,
         volatility: priceParams.volatility,
         update_frequency: priceParams.update_frequency
@@ -166,7 +187,7 @@ async function initializePriceComponent(
         entities: [{
             entity: entityPda,
             components: [
-                { componentId: new PublicKey(componentPrice.address) } // Use the program ID like the test
+                { componentId: new PublicKey(componentPrice.address) }
             ],
         }],
         args: enablePriceArgs,
@@ -179,10 +200,96 @@ async function initializePriceComponent(
     await connection.confirmTransaction(enableSig);
     console.log(`Price updates enabled for ${CurrencyType[currencyType]}`);
 
+    // Verify the component was initialized correctly
+    const accountInfo = await connection.getAccountInfo(priceComponentPda);
+    if (!accountInfo) {
+        throw new Error(`Failed to verify price component for ${CurrencyType[currencyType]}`);
+    }
+    console.log(`Verified price component for ${CurrencyType[currencyType]}: ${priceComponentPda.toBase58()}`);
+
     return {
-        componentPda: initPriceCompResult.componentPda,
+        componentPda: priceComponentPda,
         signature: enableSig
     };
+}
+
+// Add new function to update ownership component
+async function updateOwnershipComponent(
+    connection: Connection,
+    adminKeypair: Keypair,
+    worldPda: PublicKey,
+    entityPda: PublicKey,
+    ownershipComponentPda: PublicKey,
+    userPublicKey: PublicKey
+) {
+    console.log(`Initializing ownership component for entity ${entityPda.toBase58()}`);
+    
+    // Initialize the ownership component for the entity
+    const initEntityOwnership = await InitializeComponent({
+        payer: adminKeypair.publicKey,
+        entity: entityPda,
+        componentId: new PublicKey(componentOwnership.address),
+    });
+
+    initEntityOwnership.transaction.feePayer = adminKeypair.publicKey;
+    initEntityOwnership.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    initEntityOwnership.transaction.sign(adminKeypair);
+    const initEntitySig = await connection.sendRawTransaction(initEntityOwnership.transaction.serialize());
+    await connection.confirmTransaction(initEntitySig);
+    console.log(`Entity ownership component initialized. Signature: ${initEntitySig}`);
+
+    // Now use the AssignOwnership system to link the entity to the user's wallet
+    const assignOwnershipArgs = {
+        operation_type: OPERATION_TYPE_ASSIGN_TO_WALLET,
+        owner_type: ENTITY_TYPE_PLAYER,
+        entity_id: 123, // Using a simple test ID like in the tests
+        entity_type: ENTITY_TYPE_PLAYER,
+        destination_entity_id: 0,
+        owner_entity_id: 1234 // Using a numeric ID for owner entity
+    };
+
+    console.log("Setting up ownership between:", {
+        entityPda: entityPda.toBase58(),
+        userWallet: userPublicKey.toBase58(),
+        ownershipComponentPda: ownershipComponentPda.toBase58()
+    });
+
+    const assignOwnership = await ApplySystem({
+        authority: adminKeypair.publicKey,
+        systemId: new PublicKey(systemAssignOwnership.address),
+        world: worldPda,
+        entities: [{
+            entity: entityPda,
+            components: [
+                { componentId: new PublicKey(componentOwnership.address) }, // Source ownership
+                { componentId: new PublicKey(componentOwnership.address) }  // Destination ownership (same component)
+            ],
+        }],
+        args: assignOwnershipArgs,
+    });
+
+    assignOwnership.transaction.feePayer = adminKeypair.publicKey;
+    assignOwnership.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    assignOwnership.transaction.sign(adminKeypair);
+    const assignSig = await connection.sendRawTransaction(assignOwnership.transaction.serialize());
+    await connection.confirmTransaction(assignSig);
+    console.log(`Ownership assigned to user. Signature: ${assignSig}`);
+
+    // Verify the ownership was set correctly
+    try {
+        const ownershipInfo = await connection.getAccountInfo(ownershipComponentPda);
+        if (ownershipInfo) {
+            console.log("Verified ownership component:", {
+                dataSize: ownershipInfo.data.length,
+                owner: ownershipInfo.owner.toBase58(),
+                data: ownershipInfo.data
+            });
+        }
+    } catch (error) {
+        console.error("Error verifying ownership:", error);
+    }
+
+    return [initEntitySig, assignSig];
 }
 
 export async function initializeUserWalletServer(
@@ -237,6 +344,17 @@ export async function initializeUserWalletServer(
   signatures.push(initOwnershipSig);
   console.log(`Ownership component initialized: ${initOwnershipCompResult.componentPda.toBase58()}, Signature: ${initOwnershipSig}`);
 
+  // After initializing ownership component, update it with owner
+  const ownershipSigs = await updateOwnershipComponent(
+    connection,
+    adminKeypair,
+    worldPublicKey,
+    entityPda,
+    initOwnershipCompResult.componentPda,
+    userWalletPublicKey
+  );
+  signatures.push(...ownershipSigs);
+
   // 3. Initialize Wallet Component for the entity
   console.log(`Initializing wallet component for entity ${entityPda.toBase58()}`);
   const initWalletCompResult = await InitializeComponent({
@@ -256,90 +374,65 @@ export async function initializeUserWalletServer(
   // 4. Initialize and Enable Price Components for all currencies
   console.log("Initializing price components for each currency...");
 
-  const priceComponents: Partial<PriceComponentPdas> = {};
+  const priceComponents: Record<CurrencyType, string> = {} as Record<CurrencyType, string>;
 
-  // Initialize USDC price component
-  const usdcPrice = await initializePriceComponent(
-    connection,
-    adminKeypair,
-    worldPublicKey,
-    entityPda,
+  // Initialize price components for each currency type
+  const currencyTypes = [
     CurrencyType.USDC,
-    PRICE_PARAMS.USDC
-  );
-  priceComponents.USDC = usdcPrice.componentPda.toBase58();
-  console.log(`USDC price component initialized: ${usdcPrice.componentPda.toBase58()}`);
-
-  // Initialize BTC price component
-  const btcPrice = await initializePriceComponent(
-    connection,
-    adminKeypair,
-    worldPublicKey,
-    entityPda,
     CurrencyType.BTC,
-    PRICE_PARAMS.BTC
-  );
-  priceComponents.BTC = btcPrice.componentPda.toBase58();
-  console.log(`BTC price component initialized: ${btcPrice.componentPda.toBase58()}`);
-
-  // Initialize ETH price component
-  const ethPrice = await initializePriceComponent(
-    connection,
-    adminKeypair,
-    worldPublicKey,
-    entityPda,
     CurrencyType.ETH,
-    PRICE_PARAMS.ETH
-  );
-  priceComponents.ETH = ethPrice.componentPda.toBase58();
-  console.log(`ETH price component initialized: ${ethPrice.componentPda.toBase58()}`);
-
-  // Initialize SOL price component
-  const solPrice = await initializePriceComponent(
-    connection,
-    adminKeypair,
-    worldPublicKey,
-    entityPda,
     CurrencyType.SOL,
-    PRICE_PARAMS.SOL
-  );
-  priceComponents.SOL = solPrice.componentPda.toBase58();
-  console.log(`SOL price component initialized: ${solPrice.componentPda.toBase58()}`);
+    CurrencyType.AIFI
+  ] as const;
 
-  // Initialize AIFI price component
-  const aifiPrice = await initializePriceComponent(
-    connection,
-    adminKeypair,
-    worldPublicKey,
-    entityPda,
-    CurrencyType.AIFI,
-    PRICE_PARAMS.AIFI
-  );
-  priceComponents.AIFI = aifiPrice.componentPda.toBase58();
-  console.log(`AIFI price component initialized: ${aifiPrice.componentPda.toBase58()}`);
+  for (const currencyType of currencyTypes) {
+    try {
+      console.log(`\nInitializing price component for ${CurrencyType[currencyType]}...`);
+      
+      // Get the price parameters for this currency
+      const priceParams = PRICE_PARAMS[CurrencyType[currencyType] as keyof typeof PRICE_PARAMS];
+      if (!priceParams) {
+        throw new Error(`No price parameters found for ${CurrencyType[currencyType]}`);
+      }
 
-  async function verifyPriceComponent(
-    connection: Connection,
-    pricePda: PublicKey,
-    currencyType: CurrencyType
-  ) {
-    const accountInfo = await connection.getAccountInfo(pricePda);
-    if (!accountInfo) {
-      throw new Error(`Price component for ${CurrencyType[currencyType]} not initialized`);
+      const result = await initializePriceComponent(
+        connection,
+        adminKeypair,
+        worldPublicKey,
+        entityPda,
+        currencyType,
+        priceParams
+      );
+
+      // Store the PDA with numeric currency type as key
+      priceComponents[currencyType] = result.componentPda.toBase58();
+      
+      console.log(`Successfully initialized ${CurrencyType[currencyType]} price component:`, {
+        currencyType,
+        pda: result.componentPda.toBase58()
+      });
+
+      // Add a small delay between initializations to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error(`Failed to initialize price component for ${CurrencyType[currencyType]}:`, error);
+      throw error; // Re-throw to handle it in the calling function
     }
-    console.log(`Verified ${CurrencyType[currencyType]} price component:`, {
-      address: pricePda.toBase58(),
-      dataSize: accountInfo.data.length,
-      owner: accountInfo.owner.toBase58()
-    });
   }
-  
-  // Add verification calls after each price initialization
-  await verifyPriceComponent(connection, usdcPrice.componentPda, CurrencyType.USDC);
-  await verifyPriceComponent(connection, btcPrice.componentPda, CurrencyType.BTC);
-  await verifyPriceComponent(connection, ethPrice.componentPda, CurrencyType.ETH);
-  await verifyPriceComponent(connection, solPrice.componentPda, CurrencyType.SOL);
-  await verifyPriceComponent(connection, aifiPrice.componentPda, CurrencyType.AIFI);
+
+  // Verify all required price components were initialized
+  const missingComponents = currencyTypes.filter(type => !priceComponents[type]);
+  if (missingComponents.length > 0) {
+    throw new Error(`Failed to initialize price components for: ${missingComponents.map(type => CurrencyType[type]).join(', ')}`);
+  }
+
+  console.log("Final price components:", {
+    components: priceComponents,
+    mapping: Object.entries(priceComponents).reduce((acc, [key, value]) => ({
+      ...acc,
+      [CurrencyType[Number(key)]]: value
+    }), {} as Record<string, string>)
+  });
 
   // 5. Fund the Wallet using EconomySystem
   console.log(`Funding wallet with ${STARTING_USDC_AMOUNT/1000000} USDC`);
@@ -383,6 +476,7 @@ console.log(`Wallet funded with ${STARTING_USDC_AMOUNT/1000000} USDC. Signature:
   return {
     entityPda: entityPda.toBase58(),
     walletComponentPda: walletComponentPda.toBase58(),
+    ownershipComponentPda: initOwnershipCompResult.componentPda.toBase58(),
     priceComponentPdas: priceComponents as PriceComponentPdas,
     initSignatures: signatures,
   };

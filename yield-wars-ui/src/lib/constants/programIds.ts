@@ -12,6 +12,7 @@ import { Stakeable } from '@/lib/program/types/stakeable'
 import { Upgrade } from '@/lib/program/types/upgrade'
 import { Upgradeable } from '@/lib/program/types/upgradeable'
 import { Wallet } from '@/lib/program/types/wallet'
+import { AssignOwnership } from '@/lib/program/types/assign_ownership'
 
 import * as EconomyIdl from '@/lib/program/idl/economy.json'
 import * as MovementIdl from '@/lib/program/idl/movement.json'
@@ -24,6 +25,7 @@ import * as StakeableIdl from '@/lib/program/idl/stakeable.json'
 import * as UpgradeIdl from '@/lib/program/idl/upgrade.json'
 import * as UpgradeableIdl from '@/lib/program/idl/upgradeable.json'
 import * as WalletIdl from '@/lib/program/idl/wallet.json'
+import * as AssignOwnershipIdl from '@/lib/program/idl/assign_ownership.json'
 
 export const componentOwnership = OwnershipIdl as Ownership
 export const componentPrice = PriceIdl as Price
@@ -37,6 +39,7 @@ export const systemMovement = MovementIdl as Movement
 export const systemPriceAction = PriceActionIdl as PriceAction
 export const systemResourceProduction = ResourceProductionIdl as ResourceProduction
 export const systemUpgrade = UpgradeIdl as Upgrade
+export const systemAssignOwnership = AssignOwnershipIdl as AssignOwnership
 
 export const COMPONENT_OWNERSHIP_PROGRAM_ID = new PublicKey(componentOwnership.address)
 export const COMPONENT_PRICE_PROGRAM_ID = new PublicKey(componentPrice.address)
@@ -47,6 +50,7 @@ export const COMPONENT_WALLET_PROGRAM_ID = new PublicKey(componentWallet.address
 
 export const SYSTEM_ECONOMY_PROGRAM_ID = new PublicKey(systemEconomy.address)
 export const SYSTEM_MOVEMENT_PROGRAM_ID = new PublicKey(systemMovement.address)
+export const SYSTEM_ASSIGN_OWNERSHIP_PROGRAM_ID = new PublicKey(systemAssignOwnership.address)
 export const SYSTEM_PRICE_ACTION_PROGRAM_ID = new PublicKey(systemPriceAction.address)
 export const SYSTEM_RESOURCE_PRODUCTION_PROGRAM_ID = new PublicKey(systemResourceProduction.address)
 export const SYSTEM_UPGRADE_PROGRAM_ID = new PublicKey(systemUpgrade.address)
