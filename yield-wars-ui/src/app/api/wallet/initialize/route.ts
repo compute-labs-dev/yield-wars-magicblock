@@ -7,6 +7,17 @@ export const revalidate = 0;
 
 export async function POST(request: NextRequest) {
     try {
+        // Verify required environment variables
+        if (!process.env.ANCHOR_WALLET) {
+            return NextResponse.json(
+                { 
+                    error: 'Wallet initialization failed',
+                    details: 'ANCHOR_WALLET environment variable is not set'
+                },
+                { status: 500 }
+            );
+        }
+
         const body = await request.json();
         const { userPublicKey, worldPda } = body;
 

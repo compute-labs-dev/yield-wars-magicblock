@@ -3,6 +3,7 @@ import { Keypair } from "@solana/web3.js";
 import { MagicBlockEngine } from "./MagicBlockEngine";
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solana';
+import { useAnchorWallet } from "@/components/providers/AnchorWalletProvider";
 
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
@@ -39,6 +40,7 @@ function MagicBlockEngineProviderInner({
   const privy = usePrivy();
   const solanaWallets = useSolanaWallets();
   const signTransaction = useSignTransaction();
+  const { anchorWallet } = useAnchorWallet();
 
   // Handle client-side initialization
   React.useEffect(() => {
@@ -46,6 +48,14 @@ function MagicBlockEngineProviderInner({
     let key: Keypair;
     
     try {
+      // If we have an anchor wallet, use its public key
+      if (anchorWallet) {
+        key = Keypair.generate(); // Generate a new keypair but we'll use anchor wallet for signing
+        setSessionKey(key);
+        return;
+      }
+
+      // Fallback to local storage if no anchor wallet
       const sessionKeyString = localStorage.getItem(SESSION_LOCAL_STORAGE);
       if (sessionKeyString) {
         key = Keypair.fromSecretKey(
@@ -65,7 +75,7 @@ function MagicBlockEngineProviderInner({
       key = Keypair.generate();
       setSessionKey(key);
     }
-  }, []);
+  }, [anchorWallet]);
 
   const engine = React.useMemo(() => {
     if (!isClient || !sessionKey) {

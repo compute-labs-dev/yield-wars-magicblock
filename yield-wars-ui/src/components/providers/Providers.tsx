@@ -10,6 +10,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from '@/stores/store';
 import { useState, useEffect } from 'react';
+import { AnchorWalletProvider } from './AnchorWalletProvider';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,9 +51,11 @@ export function Providers(props: PropsWithChildren<object>) {
                     <ThemeProvider>
                         <PrivyProviders>
                             <SolanaProvider>
-                                <MagicBlockEngineProvider>
-                                    {props.children}
-                                </MagicBlockEngineProvider>
+                                <AnchorWalletProvider>
+                                    <MagicBlockEngineProvider>
+                                        {props.children}
+                                    </MagicBlockEngineProvider>
+                                </AnchorWalletProvider>
                             </SolanaProvider>
                         </PrivyProviders>
                     </ThemeProvider>
