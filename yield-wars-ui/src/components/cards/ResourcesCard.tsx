@@ -12,20 +12,11 @@ interface Resource {
 }
 
 interface ResourcesCardProps {
-    appearDelay?: number;
     className?: string;
 }
 
-export const ResourcesCard = ({ appearDelay = 1000, className }: ResourcesCardProps) => {
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-        setIsVisible(true);
-        }, appearDelay);
-
-        return () => clearTimeout(timer);
-    }, [appearDelay]);
+export const ResourcesCard = ({ className }: ResourcesCardProps) => {
+    const [isVisible, setIsVisible] = useState(true);
 
     const resources = useMemo<Resource>(() => ({
         usd: 900.00,

@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/Terminal";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface ComingSoonTerminalProps {
     /**
@@ -19,6 +20,7 @@ interface ComingSoonTerminalProps {
 
 export function ComingSoonTerminal({ disappearDelay, className }: ComingSoonTerminalProps) {
     const [isVisible, setIsVisible] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
         if (disappearDelay) {
@@ -30,6 +32,16 @@ export function ComingSoonTerminal({ disappearDelay, className }: ComingSoonTerm
         }
     }, [disappearDelay]);
 
+    useEffect(() => {
+        // Navigate to /home after the last animation completes
+        // Last animation starts at 1650ms and needs some time to complete
+        const navigationTimer = setTimeout(() => {
+            router.push('/home');
+        }, 2500); // Allow enough time for the typing animation to complete
+
+        return () => clearTimeout(navigationTimer);
+    }, [router]);
+
     return (
         <div className={cn(
             "transition-all duration-1000",
@@ -38,33 +50,33 @@ export function ComingSoonTerminal({ disappearDelay, className }: ComingSoonTerm
         )}>
             <Terminal className="w-full max-w-xl mx-auto bg-black border border-green-500/50 shadow-lg shadow-green-500/20">
                 <TypingAnimation className="text-green-500">&gt; Welcome to Yield Wars</TypingAnimation>
-                <TypingAnimation delay={1000} className="text-white">&gt; Preparing system...</TypingAnimation>
-                <AnimatedSpan delay={2500} className="text-green-500">
+                <TypingAnimation delay={500} className="text-white">&gt; Preparing system...</TypingAnimation>
+                <AnimatedSpan delay={750} className="text-green-500">
                     <span>✔ Checking registry.</span>
                 </AnimatedSpan>
 
-                <AnimatedSpan delay={3000} className="text-green-500">
+                <AnimatedSpan delay={1000} className="text-green-500">
                     <span>✔ Verifying resources...</span>
                 </AnimatedSpan>
 
-                <AnimatedSpan delay={3500} className="text-green-500">
+                <AnimatedSpan delay={1250} className="text-green-500">
                     <span>✔ GPUs Located...</span>
                 </AnimatedSpan>
 
-                <AnimatedSpan delay={4000} className="text-green-500">
+                <AnimatedSpan delay={1300} className="text-green-500">
                     <span>✔ Validating players...</span>
                 </AnimatedSpan>
 
-                <AnimatedSpan delay={4500} className="text-green-500">
+                <AnimatedSpan delay={1350} className="text-green-500">
                     <span>✔ Updating Leaderboard...</span>
                 </AnimatedSpan>
 
-                <AnimatedSpan delay={5000} className="text-blue-500">
+                <AnimatedSpan delay={1500} className="text-blue-500">
                     <span>ℹ Updated 1 file:</span>
                     <span className="pl-2">- lib/utils.ts</span>
                 </AnimatedSpan>
 
-                <TypingAnimation delay={5500} className="text-white">
+                <TypingAnimation delay={1650} className="text-white">
                     Success! Project initialization completed.
                 </TypingAnimation>
             </Terminal>

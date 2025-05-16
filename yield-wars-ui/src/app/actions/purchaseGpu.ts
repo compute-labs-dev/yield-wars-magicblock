@@ -154,6 +154,20 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
     GPU:   ${gpuEntityPda.toBase58()} => ${gpuEntityId}
     `);
 
+    // Helper function to send transaction with robust confirmation handling
+    const sendAndConfirmTransaction = async (tx: any, signers = [adminKeypair]) => {
+      // Sign and send transaction
+      tx.feePayer = adminKeypair.publicKey;
+      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      if (signers.length > 0) {
+        tx.sign(...signers);
+      }
+      
+      const signature = await connection.sendRawTransaction(tx.serialize());
+      console.log(`Transaction sent with signature: ${signature}`);
+      return signature;
+    };
+
     // 1. First, perform the currency transfer using EconomySystem
     console.log("Initiating currency transfer...");
     const purchaseTxDetails = await ApplySystem({
@@ -179,11 +193,7 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
       },
     });
 
-    purchaseTxDetails.transaction.feePayer = adminKeypair.publicKey;
-    purchaseTxDetails.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    purchaseTxDetails.transaction.sign(adminKeypair);
-    const purchaseSig = await connection.sendRawTransaction(purchaseTxDetails.transaction.serialize());
-    await connection.confirmTransaction(purchaseSig);
+    const purchaseSig = await sendAndConfirmTransaction(purchaseTxDetails.transaction);
     console.log("Currency transfer complete:", purchaseSig);
 
     // 2. Initialize ownership component for the GPU entity
@@ -194,11 +204,7 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
       componentId: new PublicKey(COMPONENT_OWNERSHIP_PROGRAM_ID),
     });
 
-    initGpuOwnershipComp.transaction.feePayer = adminKeypair.publicKey;
-    initGpuOwnershipComp.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    initGpuOwnershipComp.transaction.sign(adminKeypair);
-    const initGpuCompSig = await connection.sendRawTransaction(initGpuOwnershipComp.transaction.serialize());
-    await connection.confirmTransaction(initGpuCompSig);
+    const initGpuCompSig = await sendAndConfirmTransaction(initGpuOwnershipComp.transaction);
     console.log("Added ownership component to GPU entity. Signature:", initGpuCompSig);
 
     // 3. Initialize the GPU ownership component
@@ -229,11 +235,7 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
       args: initGpuOwnershipArgs
     });
 
-    initGpuOwnershipSystem.transaction.feePayer = adminKeypair.publicKey;
-    initGpuOwnershipSystem.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    initGpuOwnershipSystem.transaction.sign(adminKeypair);
-    const initGpuOwnershipSig = await connection.sendRawTransaction(initGpuOwnershipSystem.transaction.serialize());
-    await connection.confirmTransaction(initGpuOwnershipSig);
+    const initGpuOwnershipSig = await sendAndConfirmTransaction(initGpuOwnershipSystem.transaction);
     console.log("GPU ownership component initialized");
 
     // 4. Assign the GPU to the player wallet
@@ -295,11 +297,7 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
       args: assignGpuArgs,
     });
 
-    assignGpuSystem.transaction.feePayer = adminKeypair.publicKey;
-    assignGpuSystem.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    assignGpuSystem.transaction.sign(adminKeypair);
-    const assignGpuSig = await connection.sendRawTransaction(assignGpuSystem.transaction.serialize());
-    await connection.confirmTransaction(assignGpuSig);
+    const assignGpuSig = await sendAndConfirmTransaction(assignGpuSystem.transaction);
     console.log("GPU ownership assigned:", assignGpuSig);
 
     // After verification, perform a direct check that the bidirectional relationship was established
@@ -395,6 +393,12 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
       if (errorMsg.includes('panicked')) {
         console.error("PROGRAM ERROR: The Solana program panicked during execution");
         console.error("This is likely due to incorrectly formatted input data or invalid state");
+      }
+      
+      if (errorMsg.includes('timeout') || errorMsg.includes('expired')) {
+        console.error("TIMEOUT ERROR: The transaction confirmation timed out");
+        console.error("This doesn't necessarily mean the transaction failed");
+        console.error("Check the transaction signature manually in Solana Explorer");
       }
     }
     

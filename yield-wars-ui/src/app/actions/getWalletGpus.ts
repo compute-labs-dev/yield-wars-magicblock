@@ -29,13 +29,18 @@ export async function getWalletGpus(params: GetWalletGpusParams): Promise<Owners
     console.log("Fetching wallet GPUs for:", params);
 
     // Use a more reliable RPC endpoint with commitment level specified
+    // Use 'confirmed' commitment and disable any caching to get the freshest data
     const connection = new Connection(
       process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com',
       { 
         commitment: 'confirmed',
-        confirmTransactionInitialTimeout: 60000
+        confirmTransactionInitialTimeout: 60000,
+        disableRetryOnRateLimit: false
       }
     );
+    
+    // Add a small random delay to help avoid RPC caching (0-500ms)
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
     
     // Validate input parameters
     if (!params.worldPda || !params.playerEntityPda) {
@@ -44,7 +49,10 @@ export async function getWalletGpus(params: GetWalletGpusParams): Promise<Owners
 
     const worldPda = new PublicKey(params.worldPda);
     const playerEntityPda = new PublicKey(params.playerEntityPda);
-
+    
+    // Log the request timestamp to help with debugging
+    console.log("Fetching wallet GPUs at:", new Date().toISOString());
+    
     // APPROACH 1: First try to get the player's ownership component
     console.log("APPROACH 1: Looking for player's ownership component...");
     const playerOwnershipPda = FindComponentPda({

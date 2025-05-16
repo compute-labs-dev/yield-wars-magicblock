@@ -16,7 +16,7 @@ interface SquadsReferralsCardProps {
 
 type TabType = 'individual' | 'squad';
 
-export const SquadsReferralsCard = ({ appearDelay = 1000, className }: SquadsReferralsCardProps) => {
+export const SquadsReferralsCard = ({ appearDelay = 0, className }: SquadsReferralsCardProps) => {
     const [isVisible, setIsVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('individual');
 

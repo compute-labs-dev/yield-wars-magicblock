@@ -3,7 +3,7 @@
 import Image from "next/image";
 import LoginContainer from "./LoginContainer";
 import Link from "next/link";
-import { Store } from "lucide-react";
+import { Store, ChartCandlestick } from "lucide-react";
 export default function Header() {
     return (
         <div className="flex flex-col w-full">
@@ -14,6 +14,9 @@ export default function Header() {
                 <div className="flex flex-row items-center gap-2">
                     <Link href="/supply-shack">
                         <Store className="w-6 h-6 mr-4 text-green-500" />
+                    </Link>
+                    <Link href="/marketplace">
+                        <ChartCandlestick className="w-6 h-6 mr-4 text-green-500" />
                     </Link>
                     <LoginContainer />
                 </div>

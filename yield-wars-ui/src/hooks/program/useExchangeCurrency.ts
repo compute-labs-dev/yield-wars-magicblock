@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { VersionedTransaction } from '@solana/web3.js';
+import { VersionedTransaction, Connection } from '@solana/web3.js';
 import { useSolanaWallets } from '@privy-io/react-auth/solana';
 import { exchangeCurrency, ExchangeCurrencyParams } from '@/app/actions/exchangeCurrency';
 import { useSignAndSendTransaction } from '../useSignAndSendTransaction';
@@ -14,7 +14,7 @@ export const useExchangeCurrency = () => {
   const wallet = wallets[0];
 
   const mutation = useMutation({
-    mutationFn: async (params: ExchangeCurrencyParams) => {
+    mutationFn: async (params: ExchangeCurrencyParams): Promise<string> => {
       if (!wallet?.address) {
         throw new Error('Wallet not connected');
       }
@@ -22,19 +22,12 @@ export const useExchangeCurrency = () => {
       try {
         console.log("Exchange params:", params);
         
-        // Get the serialized transaction from the server
-        const serializedTx = await exchangeCurrency(params);
-        
-        // Deserialize the transaction
-        const transaction = VersionedTransaction.deserialize(
-          Buffer.from(serializedTx, 'base64')
-        );
-
-        // Sign and send the transaction
-        const signature = await signAndSend(transaction);
+        // Get the transaction signature from the server
+        const signature = await exchangeCurrency(params);
         
         // Show success toast with link to explorer
-        toast.success('Exchange successful! View on Solana Explorer', {
+        toast.success('Exchange completed successfully!', {
+          description: `Transaction sent with signature: ${signature.slice(0, 8)}...`,
           action: {
             label: 'View',
             onClick: () => window.open(`https://explorer.solana.com/tx/${signature}?cluster=devnet`, '_blank')
@@ -50,15 +43,8 @@ export const useExchangeCurrency = () => {
       }
     },
     onSuccess: (signature, variables) => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['playerData'] });
-      queryClient.invalidateQueries({ 
-        queryKey: ['userWalletBalance', variables.userWalletPublicKey, variables.currency_type] 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ['userWalletBalance', variables.userWalletPublicKey, variables.destination_currency_type] 
-      });
-      
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['walletBalance'] });
       console.log("Exchange transaction signature:", signature);
     },
   });

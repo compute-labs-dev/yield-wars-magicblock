@@ -2,6 +2,14 @@
     This file contains constants for Solana UI components
 */
 import { PublicKey } from "@solana/web3.js";
+import { CurrencyType } from './constants/programEnums';
+
+// Type definition for the constants
+type ConstantsType = {
+    [K in CurrencyType as `${CurrencyType[K]}_ENTITY`]: PublicKey;
+} & {
+    [K in CurrencyType as `${CurrencyType[K]}_PRICE_PDA`]: PublicKey;
+};
 
 // Token Mints
 export const WSOL_MINT = new PublicKey(
@@ -122,3 +130,36 @@ export const PREMIUM_GPU_STAKEABLE = new PublicKey(
 
 // Admin Entity PDA (for purchases)
 export const ADMIN_ENTITY = "GjX27a9AYTAsRCxJMuKqLwwfnoKADXiEfzhJQVrGUFHH";
+
+// Export the constants with the type
+export const constants = {
+    WSOL_MINT,
+    USDC_MINT,
+    WORLD_ADDRESS,
+    USDC_ENTITY,
+    BTC_ENTITY,
+    ETH_ENTITY,
+    SOL_ENTITY,
+    AIFI_ENTITY,
+    USDC_PRICE_PDA,
+    BTC_PRICE_PDA,
+    ETH_PRICE_PDA,
+    SOL_PRICE_PDA,
+    AIFI_PRICE_PDA,
+    ENTRY_GPU_ENTITY,
+    ENTRY_GPU_OWNERSHIP,
+    ENTRY_GPU_PRODUCTION,
+    ENTRY_GPU_UPGRADEABLE,
+    ENTRY_GPU_STAKEABLE,
+    STANDARD_GPU_ENTITY,
+    STANDARD_GPU_OWNERSHIP,
+    STANDARD_GPU_PRODUCTION,
+    STANDARD_GPU_UPGRADEABLE,
+    STANDARD_GPU_STAKEABLE,
+    PREMIUM_GPU_ENTITY,
+    PREMIUM_GPU_OWNERSHIP,
+    PREMIUM_GPU_PRODUCTION,
+    PREMIUM_GPU_UPGRADEABLE,
+    PREMIUM_GPU_STAKEABLE,
+    ADMIN_ENTITY
+} as ConstantsType;

@@ -163,12 +163,19 @@ export function useWalletGpus(playerEntityPda: string) {
           return;
         }
 
-        // Check cache first
+        // Check if force fresh fetch is enabled
+        const forceFreshFetch = sessionStorage.getItem('forceFreshFetch') === 'true';
+        
+        // Check cache first - but only if not forcing fresh fetch
         const cached = gpuCache[cacheKey];
-        if (cached && isCacheValid(cached)) {
+        if (!forceFreshFetch && cached && isCacheValid(cached)) {
           console.log("Using cached GPU data");
           setGpus(cached.data);
           return;
+        }
+
+        if (forceFreshFetch) {
+          console.log("🔄 FORCE REFRESH: Bypassing cache, fetching fresh data from blockchain");
         }
 
         setIsLoading(true);
