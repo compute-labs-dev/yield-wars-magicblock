@@ -15,9 +15,9 @@ export function useSignAndSendTransaction() {
   /**
    * Signs and sends a VersionedTransaction using the user's wallet.
    * @param txn The VersionedTransaction to sign and send
-   * @returns The transaction hash
+   * @returns The transaction hash as a string
    */
-  const signAndSend = async (txn: VersionedTransaction) => {
+  const signAndSend = async (txn: VersionedTransaction): Promise<string> => {
     setProcessing(true);
     try {
       // User must sign

@@ -1,6 +1,6 @@
 import { User } from "@privy-io/react-auth";
 import { useSelector } from "react-redux";
-import { selectGpuEntities } from "@/stores/features/worldStore";
+import { selectGpuEntities, selectIsWorldInitialized } from "@/stores/features/worldStore";
 import { GpuCard } from "./GpuCard";
 import { usePurchaseGpu } from "@/hooks/program/usePurchaseGpu";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { CurrencyType } from "@/lib/constants/programEnums";
 import * as constants from '@/lib/consts';
 import { Button } from "@/components/ui/Button";
 import type { RootState } from "@/stores/store";
+import { useEffect, useState } from "react";
 
 interface SupplyShackStoreProps {
     user: User | null;
@@ -16,11 +17,33 @@ interface SupplyShackStoreProps {
 
 export function SupplyShackStore({ user }: SupplyShackStoreProps) {
     const availableGpus = useSelector(selectGpuEntities);
-    console.log(availableGpus);
+    const isWorldInitialized = useSelector(selectIsWorldInitialized);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const { purchaseGpu, isLoading } = usePurchaseGpu();
     const userEntity = useSelector((state: RootState) => 
         user?.wallet?.address ? selectUserEntity(state, user.wallet.address) : null
     );
+
+    // Set a timer to stop showing the loading state after world is initialized and a reasonable timeout
+    useEffect(() => {
+        // If we have GPUs already, no need to show loading
+        if (availableGpus.length > 0) {
+            setIsInitialLoading(false);
+            return;
+        }
+
+        // If world isn't initialized yet, keep loading
+        if (!isWorldInitialized) {
+            return;
+        }
+
+        // After world is initialized, wait a bit for GPUs to load, then stop showing loading
+        const timer = setTimeout(() => {
+            setIsInitialLoading(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [availableGpus.length, isWorldInitialized]);
 
     const handlePurchaseGpu = async (gpuEntityPda: string) => {
         if (!user?.wallet?.address || !userEntity?.entityPda) {
@@ -110,7 +133,11 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
                 </p>
             </div>
 
-            {availableGpus.length === 0 ? (
+            {isInitialLoading ? (
+                <div className="text-center py-8">
+                    <p className="text-gray-400">Loading GPUs...</p>
+                </div>
+            ) : availableGpus.length === 0 ? (
                 <div className="text-center py-8">
                     <p className="text-gray-400">No GPUs available. Please check back later.</p>
                 </div>

@@ -14,7 +14,7 @@ export interface UsePurchaseGpuResult {
         userWalletPublicKey: string;
         sourcePricePda: string;
         destinationPricePda?: string;
-    }) => Promise<string | undefined>;
+    }) => Promise<{ purchaseSig: string; assignSig: string; } | undefined>;
 }
 
 export function usePurchaseGpu(): UsePurchaseGpuResult {
@@ -37,7 +37,8 @@ export function usePurchaseGpu(): UsePurchaseGpuResult {
             setError(null);
 
             // Call the server action to handle the purchase
-            const signature = await purchaseGpuAction(params);
+            const result = await purchaseGpuAction(params);
+            console.log("Purchase result:", result);
             
             // After successful purchase, fetch updated GPU inventory
             await fetchWalletGpus({
@@ -45,7 +46,7 @@ export function usePurchaseGpu(): UsePurchaseGpuResult {
                 playerEntityPda: params.buyerEntityPda
             });
 
-            return signature;
+            return result;
         } catch (error) {
             console.error("Error in usePurchaseGpu:", error);
             setError(error instanceof Error ? error : new Error(String(error)));

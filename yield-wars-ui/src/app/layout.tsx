@@ -7,6 +7,7 @@ import { Providers } from "@/components/providers/Providers";
 import { Analytics } from '@vercel/analytics/react';
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { RetroGrid } from "@/components/ui/RetroGrid";
 
 const pixelifySans = Pixelify_Sans({
   subsets: ["latin"],
@@ -25,6 +26,14 @@ export default function RootLayout({
       <body className="bg-black h-[100vh] w-full flex flex-col justify-between">
         <Providers>
           <Header />
+          <RetroGrid 
+            className="fixed inset-0"
+            angle={65}
+            cellSize={30}
+            opacity={0.2}
+            lightLineColor="rgba(0, 255, 50, 0.5)"
+            appearDelay={0}
+          />
           {children}
           <Footer />
         </Providers>

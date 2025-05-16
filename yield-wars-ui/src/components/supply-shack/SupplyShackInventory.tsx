@@ -19,7 +19,7 @@ import {
     setCachedGpus 
 } from "@/stores/features/worldStore";
 import * as constants from '@/lib/consts';
-import { useEffect, useCallback, useMemo, memo } from "react";
+import { useEffect, useCallback, useMemo, memo, useState } from "react";
 import type { RootState } from "@/stores/store";
 
 interface SupplyShackInventoryProps {
@@ -31,6 +31,7 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
     const isWorldInitialized = useSelector(selectIsWorldInitialized);
     const worldPda = useSelector(selectWorldPda);
     const cachedGpus = useSelector(selectCachedGpus) as EnhancedGpuOwnership[];
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     const userEntity = useSelector((state: RootState) => 
         user?.wallet?.address ? selectUserEntity(state, user.wallet.address) : null
@@ -62,11 +63,49 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
     } = useAssetStaking();
 
     // Move useMemo hooks to the top, before any conditional returns
-    const displayGpus = useMemo(() => 
-        cachedGpus.length > 0 ? cachedGpus : gpus
-    , [cachedGpus, gpus]);
+    const displayGpus = useMemo(() => {
+        // If we've fetched fresh data (gpus has items) and either:
+        // 1. There are no cached GPUs, or
+        // 2. We explicitly fetched new data recently (within the last 5 seconds)
+        const lastFetchTime = sessionStorage.getItem('lastGpuFetchTime');
+        const now = Date.now();
+        const recentlyFetched = lastFetchTime && (now - parseInt(lastFetchTime)) < 5000;
+        
+        if (gpus.length > 0 && (cachedGpus.length === 0 || recentlyFetched)) {
+            return gpus;
+        }
+        
+        // Otherwise use cached data if available
+        return cachedGpus.length > 0 ? cachedGpus : gpus;
+    }, [cachedGpus, gpus]);
 
-    const isLoading = isLoadingGpus && displayGpus.length === 0;
+    // Better handle loading state
+    useEffect(() => {
+        // If we have GPUs already, no need to show loading
+        if (displayGpus.length > 0) {
+            setIsInitialLoading(false);
+            return;
+        }
+
+        // If world isn't initialized yet, keep loading
+        if (!isWorldInitialized || !worldPda || !userEntity?.entityPda) {
+            return;
+        }
+
+        // If we're actively loading gpus from the wallet, keep the loading state
+        if (isLoadingGpus) {
+            return;
+        }
+
+        // After everything is initialized but we're not loading, wait a bit then stop showing loading
+        const timer = setTimeout(() => {
+            setIsInitialLoading(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [displayGpus.length, isWorldInitialized, worldPda, userEntity?.entityPda, isLoadingGpus]);
+
+    const isLoading = (isLoadingGpus || isInitialLoading) && displayGpus.length === 0;
 
     // Memoize loadWorldFromConstants
     const loadWorldFromConstants = useCallback(() => {
@@ -157,6 +196,8 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
 
         const loadGpus = async () => {
             if (user?.wallet?.address && userEntity?.entityPda) {
+                // Only use cached data if it exists and we're not coming from a state change
+                // like a purchase or other operation that would require a fresh fetch
                 if (cachedGpus.length === 0) {
                     console.log("Loading user's GPUs...");
                     await fetchWalletGpus();
@@ -165,6 +206,18 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                     }
                 } else {
                     console.log("Using cached GPUs data");
+                    // Periodically refresh in the background even when using cached data
+                    const lastFetchTime = sessionStorage.getItem('lastGpuFetchTime');
+                    const now = Date.now();
+                    // Refresh if last fetch was more than 30 seconds ago or doesn't exist
+                    if (!lastFetchTime || (now - parseInt(lastFetchTime)) > 30000) {
+                        console.log("Background refreshing GPU data...");
+                        await fetchWalletGpus();
+                        if (isMounted) {
+                            dispatch(setCachedGpus(gpus));
+                            sessionStorage.setItem('lastGpuFetchTime', now.toString());
+                        }
+                    }
                 }
             }
         };
@@ -194,8 +247,11 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 
                 if (signature) {
                     toast.success(`Production ${setActive ? 'started' : 'stopped'} successfully!`);
+                    // Clear cached GPUs to force a fresh fetch
+                    dispatch(setCachedGpus([]));
                     await fetchWalletGpus();
                     dispatch(setCachedGpus(gpus));
+                    sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
                 }
             } catch (err) {
                 console.error(`Error ${setActive ? 'starting' : 'stopping'} production:`, err);
@@ -219,8 +275,11 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 
                 if (signature) {
                     toast.success("Resources collected successfully!");
+                    // Clear cached GPUs to force a fresh fetch
+                    dispatch(setCachedGpus([]));
                     await fetchWalletGpus();
                     dispatch(setCachedGpus(gpus));
+                    sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
                 }
             } catch (err) {
                 console.error("Error collecting resources:", err);
@@ -248,7 +307,11 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 
                 if (signature) {
                     toast.success("Asset upgraded successfully!");
+                    // Clear cached GPUs to force a fresh fetch
+                    dispatch(setCachedGpus([]));
                     await fetchWalletGpus();
+                    dispatch(setCachedGpus(gpus));
+                    sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
                 }
             } catch (err) {
                 console.error("Error upgrading asset:", err);
@@ -266,7 +329,11 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 
                 if (signature) {
                     toast.success("Asset staked successfully!");
+                    // Clear cached GPUs to force a fresh fetch
+                    dispatch(setCachedGpus([]));
                     await fetchWalletGpus();
+                    dispatch(setCachedGpus(gpus));
+                    sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
                 }
             } catch (err) {
                 console.error("Error staking asset:", err);
@@ -284,7 +351,11 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 
                 if (signature) {
                     toast.success("Asset unstaked successfully!");
+                    // Clear cached GPUs to force a fresh fetch
+                    dispatch(setCachedGpus([]));
                     await fetchWalletGpus();
+                    dispatch(setCachedGpus(gpus));
+                    sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
                 }
             } catch (err) {
                 console.error("Error unstaking asset:", err);
@@ -302,7 +373,11 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 
                 if (signature) {
                     toast.success("Staking rewards collected successfully!");
+                    // Clear cached GPUs to force a fresh fetch
+                    dispatch(setCachedGpus([]));
                     await fetchWalletGpus();
+                    dispatch(setCachedGpus(gpus));
+                    sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
                 }
             } catch (err) {
                 console.error("Error collecting staking rewards:", err);
@@ -339,6 +414,30 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
         );
     }
 
+    // Display loading state if needed
+    if (isLoading) {
+        return (
+            <div className="text-center py-8">
+                <p className="text-gray-400">Loading your GPUs...</p>
+            </div>
+        );
+    }
+
+    // Display empty state if no GPUs
+    if (displayGpus.length === 0) {
+        return (
+            <div className="text-center py-8">
+                <p className="text-gray-400 mb-4">You don't own any GPUs yet.</p>
+                <Button 
+                    onClick={() => window.location.href = "/supply-shack?tab=store"}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                    Buy Your First GPU
+                </Button>
+            </div>
+        );
+    }
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -350,8 +449,42 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                     <Button
                         variant="outline"
                         onClick={async () => {
-                            await fetchWalletGpus();
-                            dispatch(setCachedGpus(gpus));
+                            // Add clear logging
+                            console.log("🔄 FORCE REFRESH: Clearing cache and fetching fresh data");
+                            toast.info("Refreshing GPU inventory...");
+                            
+                            // Clear the cached GPUs first to force a fresh fetch
+                            dispatch(setCachedGpus([]));
+                            
+                            // Set a flag in session storage to force bypassing cache completely
+                            sessionStorage.setItem('forceFreshFetch', 'true');
+                            
+                            try {
+                                // Add a short delay to allow transactions to confirm
+                                await new Promise(resolve => setTimeout(resolve, 2000));
+                                
+                                // Fetch wallet GPUs and wait for it to complete
+                                console.log("🔄 FORCE REFRESH: Calling fetchWalletGpus");
+                                await fetchWalletGpus();
+                                
+                                // Log the results
+                                console.log("🔄 FORCE REFRESH: Fetch complete, gpus.length =", gpus.length);
+                                
+                                // After fetch completes, then update the cache with new data
+                                dispatch(setCachedGpus(gpus));
+                                
+                                // Mark the time of the refresh
+                                sessionStorage.setItem('lastGpuFetchTime', Date.now().toString());
+                                
+                                // Clear the force flag
+                                sessionStorage.removeItem('forceFreshFetch');
+                                
+                                // Show success message with the count
+                                toast.success(`Refreshed inventory: ${gpus.length} GPUs found`);
+                            } catch (err) {
+                                console.error("Error refreshing GPU data:", err);
+                                toast.error("Failed to refresh GPU inventory");
+                            }
                         }}
                         disabled={isLoadingGpus}
                         className="bg-transparent"
@@ -367,57 +500,47 @@ export const SupplyShackInventory = memo(function SupplyShackInventory({ user }:
                 </div>
             )}
 
-            {isLoading ? (
-                <div className="text-center py-8">
-                    <p className="text-gray-400">Loading your GPUs...</p>
-                </div>
-            ) : displayGpus.length === 0 ? (
-                <div className="text-center py-8">
-                    <p className="text-gray-400">{`You don't own any GPUs yet. Visit the store to purchase one!`}</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayGpus.map((enhancedGpu) => {
-                        // Map EnhancedGpuOwnership to GPU type
-                        const gpu: GPU = {
-                            entityPda: enhancedGpu.gpuEntityPda,
-                            type: enhancedGpu.type,
-                            maxLevel: enhancedGpu.maxLevel,
-                            currentLevel: enhancedGpu.currentLevel,
-                            production: {
-                                isActive: enhancedGpu.production.isActive || false,
-                                resourcesAvailable: 0, // This needs to be calculated
-                                usdc: enhancedGpu.production.usdc,
-                                aifi: enhancedGpu.production.aifi
-                            },
-                            isStaked: enhancedGpu.isStaked,
-                            ownershipPda: enhancedGpu.ownerEntityPda,
-                            productionPda: enhancedGpu.productionPda || "",
-                            upgradeablePda: enhancedGpu.upgradeablePda || "",
-                            stakeablePda: enhancedGpu.stakeablePda || "",
-                            walletComponentPda: enhancedGpu.gpuEntityPda,
-                            price: enhancedGpu.price,
-                            operatingCost: enhancedGpu.operatingCost,
-                            location: undefined // Optional field
-                        };
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayGpus.map((enhancedGpu) => {
+                    // Map EnhancedGpuOwnership to GPU type
+                    const gpu: GPU = {
+                        entityPda: enhancedGpu.gpuEntityPda,
+                        type: enhancedGpu.type,
+                        maxLevel: enhancedGpu.maxLevel,
+                        currentLevel: enhancedGpu.currentLevel,
+                        production: {
+                            isActive: enhancedGpu.production.isActive || false,
+                            resourcesAvailable: 0, // This needs to be calculated
+                            usdc: enhancedGpu.production.usdc,
+                            aifi: enhancedGpu.production.aifi
+                        },
+                        isStaked: enhancedGpu.isStaked,
+                        ownershipPda: enhancedGpu.ownerEntityPda,
+                        productionPda: enhancedGpu.productionPda || "",
+                        upgradeablePda: enhancedGpu.upgradeablePda || "",
+                        stakeablePda: enhancedGpu.stakeablePda || "",
+                        walletComponentPda: enhancedGpu.gpuEntityPda,
+                        price: enhancedGpu.price,
+                        operatingCost: enhancedGpu.operatingCost,
+                        location: undefined // Optional field
+                    };
 
-                        return (
-                            <GpuCard
-                                key={enhancedGpu.gpuEntityPda}
-                                gpu={gpu}
-                                mode="inventory"
-                                onToggleProduction={handlers.handleToggleProduction}
-                                onCollectResources={handlers.handleCollectResources}
-                                onUpgrade={handlers.handleUpgrade}
-                                onStake={handlers.handleStake}
-                                onUnstake={handlers.handleUnstake}
-                                onCollectStakingRewards={handlers.handleCollectStakingRewards}
-                                isLoading={isLoadingProduction || isLoadingUpgrade || isLoadingStaking}
-                            />
-                        );
-                    })}
-                </div>
-            )}
+                    return (
+                        <GpuCard
+                            key={enhancedGpu.gpuEntityPda}
+                            gpu={gpu}
+                            mode="inventory"
+                            onToggleProduction={handlers.handleToggleProduction}
+                            onCollectResources={handlers.handleCollectResources}
+                            onUpgrade={handlers.handleUpgrade}
+                            onStake={handlers.handleStake}
+                            onUnstake={handlers.handleUnstake}
+                            onCollectStakingRewards={handlers.handleCollectStakingRewards}
+                            isLoading={isLoadingProduction || isLoadingUpgrade || isLoadingStaking}
+                        />
+                    );
+                })}
+            </div>
         </div>
     );
 }); 

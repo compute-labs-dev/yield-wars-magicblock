@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/stores/store';
 import { toggleLoginVisible } from '@/stores/features/uiSlice';
+import { UserCircle } from 'lucide-react';
 export function PrivyLogin(
     {
         appearDelay = 0
@@ -26,18 +27,15 @@ export function PrivyLogin(
         return () => clearTimeout(timer);
     }, [appearDelay, dispatch]);
 
-    if (!ready || !isVisible) return null;
 
-    if (!authenticated) {
+    if (!authenticated || !ready || !isVisible) {
         return (
-            <Button
-                onClick={login}
-                className="button-hover hidden md:flex cursor-pointer text-md m-0 px-2 text-lg font-bold text-white"
-                variant="link"
-                effect="hoverUnderline"
-            >
-                Login
-            </Button>
+            <button 
+            onClick={() => login()}
+            className="flex items-center justify-center"
+        >
+            <UserCircle className="w-6 h-6 text-white cursor-pointer" />
+        </button>
         )
     }
 

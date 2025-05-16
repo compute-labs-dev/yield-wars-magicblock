@@ -1,5 +1,4 @@
 import { Idl, Program } from "@coral-xyz/anchor";
-import { WalletContextState } from "@solana/wallet-adapter-react";
 import {
   AccountInfo,
   Commitment,
@@ -8,21 +7,26 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  VersionedTransaction,
 } from "@solana/web3.js";
-import { WalletName } from "@solana/wallet-adapter-base";
+import type { PrivyInterface } from '@privy-io/react-auth';
+import { 
+  useSolanaWallets, 
+  useSignTransaction, 
+  type ConnectedSolanaWallet
+} from '@privy-io/react-auth/solana';
 
-// Use environment variables with fallbacks
-const ENDPOINT_CHAIN_RPC = process.env.NEXT_PUBLIC_CHAIN_RPC_URL || "https://api.devnet.solana.com";
-const ENDPOINT_CHAIN_WS = process.env.NEXT_PUBLIC_CHAIN_WS_URL || "wss://api.devnet.solana.com";
+const ENDPOINT_CHAIN_RPC = "https://api.devnet.solana.com";
+const ENDPOINT_CHAIN_WS = "wss://api.devnet.solana.com";
 
-const _ENDPOINT_CHAIN_RPC = "http://127.0.0.1:7899";
-const _ENDPOINT_CHAIN_WS = "ws://127.0.0.1:7900";
+// const _ENDPOINT_CHAIN_RPC = "http://127.0.0.1:7899";
+// const _ENDPOINT_CHAIN_WS = "ws://127.0.0.1:7900";
 
-const ENDPOINT_EPHEM_RPC = process.env.NEXT_PUBLIC_EPHEM_RPC_URL || "https://devnet.magicblock.app";
-const ENDPOINT_EPHEM_WS = process.env.NEXT_PUBLIC_EPHEM_WS_URL || "wss://devnet.magicblock.app:8900";
+const ENDPOINT_EPHEM_RPC = "https://devnet.magicblock.app";
+const ENDPOINT_EPHEM_WS = "wss://devnet.magicblock.app:8900";
 
-const _ENDPOINT_EPHEM_RPC = "http://localhost:8899";
-const _ENDPOINT_EPHEM_WS = "ws://localhost:8900";
+// const _ENDPOINT_EPHEM_RPC = "http://localhost:8899";
+// const _ENDPOINT_EPHEM_WS = "ws://localhost:8900";
 
 const TRANSACTION_COST_LAMPORTS = 5000;
 
@@ -44,37 +48,37 @@ interface WalletAdapter {
 }
 
 export class MagicBlockEngine {
-  private walletContext: WalletContextState;
   private sessionKey: Keypair;
   private sessionConfig: SessionConfig;
+  private signTransaction: ReturnType<typeof useSignTransaction>;
+  private privy: PrivyInterface;
+  private solanaWallets: ReturnType<typeof useSolanaWallets>;
+  private connection: Connection;
+  private endpoint: string;
 
   constructor(
-    walletContext: WalletContextState,
+    signTransaction: ReturnType<typeof useSignTransaction>,
+    privy: PrivyInterface,
+    solanaWallets: ReturnType<typeof useSolanaWallets>,
     sessionKey: Keypair,
-    sessionConfig: SessionConfig
+    sessionConfig: SessionConfig,
+    endpoint: string
   ) {
-    this.walletContext = walletContext;
+    this.signTransaction = signTransaction;
+    this.privy = privy;
+    this.solanaWallets = solanaWallets;
     this.sessionKey = sessionKey;
     this.sessionConfig = sessionConfig;
+    this.endpoint = endpoint;
+    this.connection = new Connection(endpoint);
   }
 
-  
-
-  getProgramOnChain<T extends Idl>(idl: {}): Program<T> {
-    const MockWallet = {
-      signTransaction: () => Promise.reject(),
-      signAllTransactions: () => Promise.reject(),
-      publicKey: Keypair.generate().publicKey,
-    }
-    return new Program<T>(idl as T, { connection: connectionChain, wallet: MockWallet });
+  getProgramOnChain<T extends Idl>(idl: Record<string, unknown>): Program<T> {
+    return new Program<T>(idl as T, { connection: connectionChain });
   }
-  getProgramOnEphem<T extends Idl>(idl: {}): Program<T> {
-    const MockWallet = {
-      signTransaction: () => Promise.reject(),
-      signAllTransactions: () => Promise.reject(),
-      publicKey: Keypair.generate().publicKey,
-    }
-    return new Program<T>(idl as T, { connection: connectionEphem, wallet: MockWallet });
+
+  getProgramOnEphem<T extends Idl>(idl: Record<string, unknown>): Program<T> {
+    return new Program<T>(idl as T, { connection: connectionEphem });
   }
 
   getConnectionChain(): Connection {
@@ -85,14 +89,18 @@ export class MagicBlockEngine {
   }
 
   getWalletConnected() {
-    return this.walletContext.connected;
+    return this.privy.authenticated && this.solanaWallets.wallets.length > 0;
   }
   getWalletConnecting() {
-    return this.walletContext.connecting;
+    return !this.privy.ready;
   }
 
   getWalletPayer(): PublicKey {
-    return this.walletContext.publicKey!;
+    const solanaWallet = this.solanaWallets.wallets[0];
+    if (!solanaWallet?.address) {
+      throw new Error("Solana wallet not connected");
+    }
+    return new PublicKey(solanaWallet.address);
   }
 
   getSessionPayer(): PublicKey {
@@ -101,13 +109,30 @@ export class MagicBlockEngine {
 
   async processWalletTransaction(
     name: string,
-    transaction: Transaction
+    transaction: Transaction | VersionedTransaction
   ): Promise<string> {
     console.log(name, "sending");
-    const signature = await this.walletContext.sendTransaction(
-      transaction,
-      connectionChain
+    
+    // Get the first connected wallet
+    const wallet = this.solanaWallets.wallets[0];
+    if (!wallet) {
+      throw new Error("No Solana wallet connected");
+    }
+
+    // Sign the transaction using the wallet's signTransaction method
+    const signedTx = await wallet.signTransaction(transaction);
+
+    if (!signedTx) {
+      throw new Error("Failed to sign transaction");
+    }
+
+    // Send the signed transaction
+    const signature = await connectionChain.sendRawTransaction(
+      signedTx instanceof VersionedTransaction 
+        ? signedTx.serialize() 
+        : signedTx.serialize()
     );
+
     await this.waitSignatureConfirmation(
       name,
       signature,
@@ -141,7 +166,7 @@ export class MagicBlockEngine {
     transaction: Transaction
   ): Promise<string> {
     console.log(name, "sending");
-    transaction.compileMessage;
+    transaction.compileMessage();
     const signature = await connectionEphem.sendTransaction(
       transaction,
       [this.sessionKey],
@@ -162,22 +187,16 @@ export class MagicBlockEngine {
     connection: Connection,
     commitment: Commitment
   ): Promise<void> {
-    console.log(name, "sent", signature);
-    return new Promise((resolve, reject) => {
-      connection.onSignature(
-        signature,
-        (result) => {
-          console.log(name, commitment, signature, result.err);
-          if (result.err) {
-            this.debugError(name, signature, connection);
-            reject(result.err);
-          } else {
-            resolve();
-          }
-        },
-        commitment
-      );
-    });
+    const latestBlockHash = await connection.getLatestBlockhash();
+
+    await connection.confirmTransaction(
+      {
+        blockhash: latestBlockHash.blockhash,
+        lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+        signature: signature,
+      },
+      commitment
+    );
   }
 
   async debugError(name: string, signature: string, connection: Connection) {
@@ -242,12 +261,26 @@ export class MagicBlockEngine {
     }
   }
 
-  getChainAccountInfo(address: PublicKey) {
-    return connectionChain.getAccountInfo(address);
+  async getChainAccountInfo(address: PublicKey): Promise<{ owner: PublicKey } | null> {
+    try {
+      const accountInfo = await this.connection.getAccountInfo(address);
+      if (!accountInfo) return null;
+      return { owner: accountInfo.owner };
+    } catch (error) {
+      console.error('Failed to get chain account info:', error);
+      return null;
+    }
   }
 
-  getEphemAccountInfo(address: PublicKey) {
-    return connectionEphem.getAccountInfo(address);
+  async getEphemeralAccountInfo(address: PublicKey): Promise<{ owner: PublicKey } | null> {
+    try {
+      const accountInfo = await this.connection.getAccountInfo(address);
+      if (!accountInfo) return null;
+      return { owner: accountInfo.owner };
+    } catch (error) {
+      console.error('Failed to get ephemeral account info:', error);
+      return null;
+    }
   }
 
   subscribeToChainAccountInfo(
@@ -280,10 +313,10 @@ export class MagicBlockEngine {
     let ignoreFetch = false;
     connection.getAccountInfo(address).then(
       (accountInfo) => {
-        if (ignoreFetch) {
+        if (ignoreFetch || !accountInfo) {
           return;
         }
-        onAccountChange(accountInfo!);
+        onAccountChange(accountInfo);
       },
       (error) => {
         console.log("Error fetching accountInfo", error);
@@ -301,19 +334,19 @@ export class MagicBlockEngine {
   }
 
   listWalletAdapters(): WalletAdapter[] {
-    return this.walletContext.wallets.map((wallet) => {
+    return this.solanaWallets.wallets.map((wallet: ConnectedSolanaWallet) => {
       return {
-        name: wallet.adapter.name,
-        icon: wallet.adapter.icon,
+        name: wallet.address,
+        icon: '',
       };
     });
   }
 
   selectWalletAdapter(wallet: WalletAdapter | null) {
     if (wallet) {
-      return this.walletContext.select(wallet.name as WalletName);
+      return this.privy.connectWallet();
     } else {
-      return this.walletContext.disconnect();
+      return this.privy.logout();
     }
   }
 
