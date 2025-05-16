@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { selectWorldPda } from '@/stores/features/worldStore';
 import { selectUserEntity } from '@/stores/features/userEntityStore';
@@ -30,26 +30,43 @@ export function useWalletBalance(walletAddress: string | undefined): UseWalletBa
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+    const lastFetchTime = useRef<number>(0);
+    const minimumFetchInterval = 5000; // 5 seconds between requests to avoid rate limiting
 
     const worldPda = useSelector(selectWorldPda);
     const userEntity = useSelector((state: RootState) => 
         walletAddress ? selectUserEntity(state, walletAddress) : null
     );
 
-    const fetchBalances = async () => {
-        if (!walletAddress || !userEntity?.entityPda || !worldPda) {
+    const fetchBalances = useCallback(async () => {
+        if (!walletAddress || !userEntity?.walletComponentPda || !worldPda) {
             return;
+        }
+
+        // Check if enough time has passed since the last fetch
+        const now = Date.now();
+        const timeSinceLastFetch = now - lastFetchTime.current;
+        
+        if (timeSinceLastFetch < minimumFetchInterval && lastFetchTime.current !== 0) {
+            const waitTime = minimumFetchInterval - timeSinceLastFetch;
+            console.log(`Throttling wallet balance request. Waiting ${waitTime}ms before fetching.`);
+            
+            // Wait for the remaining time before fetching
+            await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
         try {
             setIsLoading(true);
             setError(null);
+            lastFetchTime.current = Date.now();
 
             const balanceData = await getWalletBalance({
                 worldPda,
-                userEntityPda: userEntity.entityPda,
+                userEntityPda: userEntity.walletComponentPda,
                 userWalletPublicKey: walletAddress
             });
+
+            console.log('💰 balanceData', balanceData);
 
             if (balanceData) {
                 setBalances({
@@ -66,12 +83,12 @@ export function useWalletBalance(walletAddress: string | undefined): UseWalletBa
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [walletAddress, userEntity?.walletComponentPda, worldPda]);
 
     // Fetch balances on mount and when dependencies change
     useEffect(() => {
         fetchBalances();
-    }, [walletAddress, userEntity?.entityPda, worldPda, fetchBalances]);
+    }, [fetchBalances]);
 
     return {
         balances,

@@ -6,7 +6,6 @@ import { usePrivy } from "@privy-io/react-auth";
 import { Loader2 } from "lucide-react";
 import PrimaryTerminal from "@/components/terminals/PrimaryTerminal";
 import ShowTerminalButton from "@/components/terminals/ShowTerminalButton";
-import { useState } from "react";
 import { closeTerminal, setInitialLoad, setTerminalHeight, setTerminalVisible } from "@/stores/features/uiSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/stores/store";

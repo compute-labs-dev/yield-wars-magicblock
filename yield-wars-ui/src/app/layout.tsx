@@ -8,6 +8,7 @@ import { Analytics } from '@vercel/analytics/react';
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { RetroGrid } from "@/components/ui/RetroGrid";
+import WalletInitializer from '@/components/WalletInitializer';
 
 const pixelifySans = Pixelify_Sans({
   subsets: ["latin"],
@@ -34,7 +35,9 @@ export default function RootLayout({
             lightLineColor="rgba(0, 255, 50, 0.5)"
             appearDelay={0}
           />
-          {children}
+          <WalletInitializer>
+            {children}
+          </WalletInitializer>
           <Footer />
         </Providers>
         <Toaster />

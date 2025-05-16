@@ -8,7 +8,8 @@ import { usePrivy } from '@privy-io/react-auth';
 import { selectUserEntity, selectUserPriceComponentPdas } from '@/stores/features/userEntityStore';
 import { RootState } from '@/stores/store';
 import { useQuery } from '@tanstack/react-query';
-import { fetchWalletBalance, fetchPriceComponent } from '@/app/actions/fetchComponents';
+import { fetchPriceComponent } from '@/app/actions/fetchComponents';
+import { useWalletBalance } from '@/hooks/program/useWalletBalance';
 
 interface ExchangeFormProps {
     onExchange: (params: {
@@ -41,26 +42,8 @@ export const ExchangeForm = ({ onExchange, isLoading }: ExchangeFormProps) => {
     const [activeTab, setActiveTab] = useState<'swap' | 'limit' | 'long' | 'short'>('swap');
     const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
-    // Fetch wallet balances
-    const { data: walletData, isLoading: isLoadingWallet, refetch: refetchWallet } = useQuery({
-        queryKey: ['walletBalance', walletAddress, userEntity?.walletComponentPda],
-        queryFn: async () => {
-            if (!userEntity?.walletComponentPda) return null;
-            return fetchWalletBalance(userEntity.walletComponentPda);
-        },
-        enabled: !!userEntity?.walletComponentPda && !!walletAddress,
-        refetchInterval: 30000, // Refetch every 30 seconds
-        staleTime: 10000, // Consider data stale after 10 seconds
-    });
-
-    // Get user balances for each currency type
-    const balances = {
-        [CurrencyType.USDC]: walletData?.usdcBalance || 0,
-        [CurrencyType.BTC]: walletData?.btcBalance || 0,
-        [CurrencyType.ETH]: walletData?.ethBalance || 0,
-        [CurrencyType.SOL]: walletData?.solBalance || 0,
-        [CurrencyType.AIFI]: walletData?.aifiBalance || 0,
-    };
+    // Use the same wallet balance hook as ResourcesCard
+    const { balances, isLoading: isLoadingWallet, error: walletError, refetch: refetchWallet } = useWalletBalance(walletAddress);
 
     // Fetch source currency price
     const { data: sourcePriceData, isLoading: isLoadingSourcePrice } = useQuery({
@@ -178,14 +161,64 @@ export const ExchangeForm = ({ onExchange, isLoading }: ExchangeFormProps) => {
         return CurrencyType[type] || 'Unknown';
     };
 
-    // Format balance to human-readable format (with 6 decimal places in the on-chain data)
-    const formatBalance = (balance: number): string => {
-        return (balance / 1000000).toFixed(4);
+    // Format balance to human-readable format - now just to display values, as useWalletBalance already converts them
+    const formatBalance = (value: number): string => {
+        if (!value || value === 0) {
+            return '0.0000';
+        }
+        return value.toFixed(5);
     };
 
     const isFormDisabled = !user?.wallet?.address || !isWorldInitialized || !userEntity;
-    const hasInsufficientBalance = parseFloat(sourceAmount) > (balances[sourceCurrency] / 1000000);
+    
+    // Calculate insufficient balance check
+    const hasInsufficientBalance = (() => {
+        if (!sourceAmount || parseFloat(sourceAmount) === 0) return false;
+        
+        const sourceValue = parseFloat(sourceAmount);
+        let balance = 0;
+        
+        // Maps CurrencyType enum values to balance property names
+        switch(sourceCurrency) {
+            case CurrencyType.USDC:
+                balance = balances.usdc;
+                break;
+            case CurrencyType.BTC:
+                balance = balances.btc;
+                break;
+            case CurrencyType.ETH:
+                balance = balances.eth;
+                break;
+            case CurrencyType.SOL:
+                balance = balances.sol;
+                break;
+            case CurrencyType.AIFI:
+                balance = balances.aifi;
+                break;
+        }
+        
+        return sourceValue > balance;
+    })();
+    
     const isLoadingData = isLoadingWallet || isLoadingSourcePrice || isLoadingDestPrice;
+
+    // Helper function to get the correct balance for a currency type
+    const getCurrencyBalance = (currencyType: CurrencyType): number => {
+        switch(currencyType) {
+            case CurrencyType.USDC:
+                return balances.usdc;
+            case CurrencyType.BTC:
+                return balances.btc;
+            case CurrencyType.ETH:
+                return balances.eth;
+            case CurrencyType.SOL:
+                return balances.sol;
+            case CurrencyType.AIFI:
+                return balances.aifi;
+            default:
+                return 0;
+        }
+    };
 
     return (
         <div className="bg-black backdrop-blur-sm rounded-lg">
@@ -262,7 +295,7 @@ export const ExchangeForm = ({ onExchange, isLoading }: ExchangeFormProps) => {
                         </div>
                     </div>
                     <div className="text-gray-500 text-xs font-mono mt-1">
-                        Balance: {isLoadingWallet ? "Loading..." : formatBalance(balances[sourceCurrency] || 0)}
+                        Balance: {isLoadingWallet ? "Loading..." : formatBalance(getCurrencyBalance(sourceCurrency))}
                     </div>
                 </div>
 
@@ -340,7 +373,7 @@ export const ExchangeForm = ({ onExchange, isLoading }: ExchangeFormProps) => {
                         </div>
                     </div>
                     <div className="text-gray-500 text-xs font-mono mt-1">
-                        Balance: {isLoadingWallet ? "Loading..." : formatBalance(balances[destinationCurrency] || 0)}
+                        Balance: {isLoadingWallet ? "Loading..." : formatBalance(getCurrencyBalance(destinationCurrency))}
                     </div>
                 </div>
 

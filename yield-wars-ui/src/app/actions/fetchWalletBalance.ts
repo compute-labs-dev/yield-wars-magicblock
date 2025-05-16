@@ -29,6 +29,8 @@ export async function fetchWalletBalance({
             userWalletPublicKey
         });
 
+        console.log('💰 balances', balances);
+
         return {
             usdc: balances.usdc || 0,
             btc: balances.btc || 0,

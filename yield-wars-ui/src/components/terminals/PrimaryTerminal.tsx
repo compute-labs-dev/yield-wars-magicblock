@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
 import { useTerminalCommands } from '../../hooks/useTerminalCommands';
+import { toast } from 'sonner';
 
 interface TerminalEntry {
     type: 'input' | 'output';
@@ -205,6 +206,71 @@ const PrimaryTerminal: React.FC<PrimaryTerminalProps> = ({
 
     // Format terminal output with syntax highlighting
     const formatOutput = (content: string): ReactNode => {
+        // Check for URLs in the content and make them clickable
+        const containsUrl = content.match(/https?:\/\/[^\s]+/g);
+        
+        if (containsUrl) {
+            // Replace URLs with clickable links
+            return (
+                <div className="whitespace-pre-wrap font-mono text-sm leading-tight">
+                    {content.split('\n').map((line, i) => {
+                        // Process any line that might contain a URL
+                        const urlPattern = /(https?:\/\/[^\s]+)/g;
+                        if (line.match(urlPattern)) {
+                            // Split the line into parts: text and URLs
+                            const parts = line.split(urlPattern);
+                            return (
+                                <div key={i}>
+                                    {parts.map((part, j) => {
+                                        if (part.match(urlPattern)) {
+                                            // This is a URL, make it clickable
+                                            return (
+                                                <span key={j} className="inline-flex items-center">
+                                                    <a 
+                                                        href={part}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-400 hover:underline cursor-pointer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {part}
+                                                    </a>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText(part);
+                                                            toast.success('Link copied to clipboard', {
+                                                                position: 'bottom-center',
+                                                                style: {
+                                                                    background: '#1E1E1E',
+                                                                    color: '#4AFF4A',
+                                                                    border: '1px solid #4AFF4A',
+                                                                },
+                                                                duration: 2000,
+                                                            });
+                                                        }}
+                                                        className="ml-1 text-gray-400 hover:text-white opacity-70 hover:opacity-100"
+                                                        title="Copy to clipboard"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                                        </svg>
+                                                    </button>
+                                                </span>
+                                            );
+                                        }
+                                        return <span key={j}>{part}</span>;
+                                    })}
+                                </div>
+                            );
+                        }
+                        return <div key={i}>{line}</div>;
+                    })}
+                </div>
+            );
+        }
+        
         // Check if content has section headers (both help and season outputs)
         if (content.match(/^\[.*\]$/m)) {
             return (
