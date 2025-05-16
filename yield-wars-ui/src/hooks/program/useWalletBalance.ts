@@ -71,7 +71,7 @@ export function useWalletBalance(walletAddress: string | undefined): UseWalletBa
     // Fetch balances on mount and when dependencies change
     useEffect(() => {
         fetchBalances();
-    }, [walletAddress, userEntity?.entityPda, worldPda]);
+    }, [walletAddress, userEntity?.entityPda, worldPda, fetchBalances]);
 
     return {
         balances,
