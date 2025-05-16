@@ -326,195 +326,210 @@ async function sendAndConfirmWithRetry(
 export async function initializeUserWalletServer(
   params: InitializeUserWalletParams
 ): Promise<InitializeUserWalletResult> {
-  if (!ADMIN_PRIVATE_KEY_BS58) {
-    throw new Error('Admin private key (FE_CL_BS58_SIGNER_PRIVATE_KEY) not configured in environment variables.');
-  }
-  if (!RPC_ENDPOINT) {
-    throw new Error('NEXT_PUBLIC_RPC_ENDPOINT not configured.');
-  }
+  let adminKeypair: Keypair;
 
-  console.log('Initializing with RPC endpoint:', RPC_ENDPOINT);
-
-  const WALLET_COMPONENT_PROGRAM_ID = componentWallet.address;
-  const PRICE_COMPONENT_PROGRAM_ID = componentPrice.address;
-  const ECONOMY_SYSTEM_PROGRAM_ID = systemEconomy.address;
-  const OWNERSHIP_COMPONENT_PROGRAM_ID = componentOwnership.address;
-
-  const connection = new Connection(RPC_ENDPOINT, 'confirmed');
-  const adminKeypair = Keypair.fromSecretKey(bs58.decode(ADMIN_PRIVATE_KEY_BS58));
-  const userWalletPublicKey = new PublicKey(params.userPublicKey);
-  const worldPublicKey = new PublicKey(params.worldPda);
-  const signatures: string[] = [];
-
-  // 1. Add Entity for the user
-  console.log(`Adding entity for user ${userWalletPublicKey.toBase58()} in world ${worldPublicKey.toBase58()}`);
-  const addEntityResult = await AddEntity({
-    payer: adminKeypair.publicKey,
-    world: worldPublicKey,
-    connection: connection,
-  });
-  const addEntitySig = await sendAndConfirmWithRetry(
-    connection,
-    addEntityResult.transaction,
-    adminKeypair,
-    'Add entity'
-  );
-  signatures.push(addEntitySig);
-  console.log(`Entity added: ${addEntityResult.entityPda.toBase58()}, Signature: ${addEntitySig}`);
-  const entityPda = addEntityResult.entityPda;
-
-  // 2. Initialize Ownership Component for the entity
-  console.log(`Initializing ownership component for entity ${entityPda.toBase58()}`);
-  const initOwnershipCompResult = await InitializeComponent({
-    payer: adminKeypair.publicKey,
-    entity: entityPda,
-    componentId: new PublicKey(OWNERSHIP_COMPONENT_PROGRAM_ID),
-  });
-  const initOwnershipSig = await sendAndConfirmWithRetry(
-    connection,
-    initOwnershipCompResult.transaction,
-    adminKeypair,
-    'Initialize ownership component'
-  );
-  signatures.push(initOwnershipSig);
-  console.log(`Ownership component initialized: ${initOwnershipCompResult.componentPda.toBase58()}, Signature: ${initOwnershipSig}`);
-
-  // After initializing ownership component, update it with owner
-  const ownershipSigs = await updateOwnershipComponent(
-    connection,
-    adminKeypair,
-    worldPublicKey,
-    entityPda,
-    initOwnershipCompResult.componentPda,
-    userWalletPublicKey
-  );
-  signatures.push(...ownershipSigs);
-
-  // 3. Initialize Wallet Component for the entity
-  console.log(`Initializing wallet component for entity ${entityPda.toBase58()}`);
-  const initWalletCompResult = await InitializeComponent({
-    payer: adminKeypair.publicKey,
-    entity: entityPda,
-    componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID),
-  });
-  const initWalletSig = await sendAndConfirmWithRetry(
-    connection,
-    initWalletCompResult.transaction,
-    adminKeypair,
-    'Initialize wallet component'
-  );
-  signatures.push(initWalletSig);
-  console.log(`Wallet component initialized: ${initWalletCompResult.componentPda.toBase58()}, Signature: ${initWalletSig}`);
-  const walletComponentPda = initWalletCompResult.componentPda;
-
-  // 4. Initialize and Enable Price Components for all currencies
-  console.log("Initializing price components for each currency...");
-
-  const priceComponents: Record<CurrencyType, string> = {} as Record<CurrencyType, string>;
-
-  // Initialize price components for each currency type
-  const currencyTypes = [
-    CurrencyType.USDC,
-    CurrencyType.BTC,
-    CurrencyType.ETH,
-    CurrencyType.SOL,
-    CurrencyType.AIFI
-  ] as const;
-
-  for (const currencyType of currencyTypes) {
-    try {
-      console.log(`\nInitializing price component for ${CurrencyType[currencyType]}...`);
-      
-      // Get the price parameters for this currency
-      const priceParams = PRICE_PARAMS[CurrencyType[currencyType] as keyof typeof PRICE_PARAMS];
-      if (!priceParams) {
-        throw new Error(`No price parameters found for ${CurrencyType[currencyType]}`);
-      }
-
-      const result = await initializePriceComponent(
-        connection,
-        adminKeypair,
-        worldPublicKey,
-        entityPda,
-        currencyType,
-        priceParams
-      );
-
-      // Store the PDA with numeric currency type as key
-      priceComponents[currencyType] = result.componentPda.toBase58();
-      
-      console.log(`Successfully initialized ${CurrencyType[currencyType]} price component:`, {
-        currencyType,
-        pda: result.componentPda.toBase58()
-      });
-
-      // Add a small delay between initializations to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Failed to initialize price component for ${CurrencyType[currencyType]}:`, error);
-      throw error; // Re-throw to handle it in the calling function
+  try {
+    if (!ADMIN_PRIVATE_KEY_BS58) {
+      throw new Error('Admin private key (FE_CL_BS58_SIGNER_PRIVATE_KEY) not configured in environment variables.');
     }
-  }
 
-  // Verify all required price components were initialized
-  const missingComponents = currencyTypes.filter(type => !priceComponents[type]);
-  if (missingComponents.length > 0) {
-    throw new Error(`Failed to initialize price components for: ${missingComponents.map(type => CurrencyType[type]).join(', ')}`);
-  }
+    // Try to decode the BS58 private key directly
+    try {
+      adminKeypair = Keypair.fromSecretKey(bs58.decode(ADMIN_PRIVATE_KEY_BS58));
+    } catch (error) {
+      console.error('Failed to decode BS58 private key:', error);
+      throw new Error('Invalid admin private key format. Must be BS58 encoded.');
+    }
 
-  console.log("Final price components:", {
-    components: priceComponents,
-    mapping: Object.entries(priceComponents).reduce((acc, [key, value]) => ({
-      ...acc,
-      [CurrencyType[Number(key)]]: value
-    }), {} as Record<string, string>)
+    if (!RPC_ENDPOINT) {
+      throw new Error('NEXT_PUBLIC_RPC_ENDPOINT not configured.');
+    }
+
+    console.log('Initializing with RPC endpoint:', RPC_ENDPOINT);
+
+    const WALLET_COMPONENT_PROGRAM_ID = componentWallet.address;
+    const PRICE_COMPONENT_PROGRAM_ID = componentPrice.address;
+    const ECONOMY_SYSTEM_PROGRAM_ID = systemEconomy.address;
+    const OWNERSHIP_COMPONENT_PROGRAM_ID = componentOwnership.address;
+
+    const connection = new Connection(RPC_ENDPOINT, 'confirmed');
+    const userWalletPublicKey = new PublicKey(params.userPublicKey);
+    const worldPublicKey = new PublicKey(params.worldPda);
+    const signatures: string[] = [];
+
+    // 1. Add Entity for the user
+    console.log(`Adding entity for user ${userWalletPublicKey.toBase58()} in world ${worldPublicKey.toBase58()}`);
+    const addEntityResult = await AddEntity({
+      payer: adminKeypair.publicKey,
+      world: worldPublicKey,
+      connection: connection,
+    });
+    const addEntitySig = await sendAndConfirmWithRetry(
+      connection,
+      addEntityResult.transaction,
+      adminKeypair,
+      'Add entity'
+    );
+    signatures.push(addEntitySig);
+    console.log(`Entity added: ${addEntityResult.entityPda.toBase58()}, Signature: ${addEntitySig}`);
+    const entityPda = addEntityResult.entityPda;
+
+    // 2. Initialize Ownership Component for the entity
+    console.log(`Initializing ownership component for entity ${entityPda.toBase58()}`);
+    const initOwnershipCompResult = await InitializeComponent({
+      payer: adminKeypair.publicKey,
+      entity: entityPda,
+      componentId: new PublicKey(OWNERSHIP_COMPONENT_PROGRAM_ID),
+    });
+    const initOwnershipSig = await sendAndConfirmWithRetry(
+      connection,
+      initOwnershipCompResult.transaction,
+      adminKeypair,
+      'Initialize ownership component'
+    );
+    signatures.push(initOwnershipSig);
+    console.log(`Ownership component initialized: ${initOwnershipCompResult.componentPda.toBase58()}, Signature: ${initOwnershipSig}`);
+
+    // After initializing ownership component, update it with owner
+    const ownershipSigs = await updateOwnershipComponent(
+      connection,
+      adminKeypair,
+      worldPublicKey,
+      entityPda,
+      initOwnershipCompResult.componentPda,
+      userWalletPublicKey
+    );
+    signatures.push(...ownershipSigs);
+
+    // 3. Initialize Wallet Component for the entity
+    console.log(`Initializing wallet component for entity ${entityPda.toBase58()}`);
+    const initWalletCompResult = await InitializeComponent({
+      payer: adminKeypair.publicKey,
+      entity: entityPda,
+      componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID),
+    });
+    const initWalletSig = await sendAndConfirmWithRetry(
+      connection,
+      initWalletCompResult.transaction,
+      adminKeypair,
+      'Initialize wallet component'
+    );
+    signatures.push(initWalletSig);
+    console.log(`Wallet component initialized: ${initWalletCompResult.componentPda.toBase58()}, Signature: ${initWalletSig}`);
+    const walletComponentPda = initWalletCompResult.componentPda;
+
+    // 4. Initialize and Enable Price Components for all currencies
+    console.log("Initializing price components for each currency...");
+
+    const priceComponents: Record<CurrencyType, string> = {} as Record<CurrencyType, string>;
+
+    // Initialize price components for each currency type
+    const currencyTypes = [
+      CurrencyType.USDC,
+      CurrencyType.BTC,
+      CurrencyType.ETH,
+      CurrencyType.SOL,
+      CurrencyType.AIFI
+    ] as const;
+
+    for (const currencyType of currencyTypes) {
+      try {
+        console.log(`\nInitializing price component for ${CurrencyType[currencyType]}...`);
+        
+        // Get the price parameters for this currency
+        const priceParams = PRICE_PARAMS[CurrencyType[currencyType] as keyof typeof PRICE_PARAMS];
+        if (!priceParams) {
+          throw new Error(`No price parameters found for ${CurrencyType[currencyType]}`);
+        }
+
+        const result = await initializePriceComponent(
+          connection,
+          adminKeypair,
+          worldPublicKey,
+          entityPda,
+          currencyType,
+          priceParams
+        );
+
+        // Store the PDA with numeric currency type as key
+        priceComponents[currencyType] = result.componentPda.toBase58();
+        
+        console.log(`Successfully initialized ${CurrencyType[currencyType]} price component:`, {
+          currencyType,
+          pda: result.componentPda.toBase58()
+        });
+
+        // Add a small delay between initializations to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error(`Failed to initialize price component for ${CurrencyType[currencyType]}:`, error);
+        throw error; // Re-throw to handle it in the calling function
+      }
+    }
+
+    // Verify all required price components were initialized
+    const missingComponents = currencyTypes.filter(type => !priceComponents[type]);
+    if (missingComponents.length > 0) {
+      throw new Error(`Failed to initialize price components for: ${missingComponents.map(type => CurrencyType[type]).join(', ')}`);
+    }
+
+    console.log("Final price components:", {
+      components: priceComponents,
+      mapping: Object.entries(priceComponents).reduce((acc, [key, value]) => ({
+        ...acc,
+        [CurrencyType[Number(key)]]: value
+      }), {} as Record<string, string>)
+    });
+
+    // 5. Fund the Wallet using EconomySystem
+    console.log(`Funding wallet with ${STARTING_USDC_AMOUNT/1000000} USDC`);
+    const fundWalletTxDetails = await ApplySystem({
+      authority: adminKeypair.publicKey,
+      systemId: new PublicKey(ECONOMY_SYSTEM_PROGRAM_ID),
+      world: worldPublicKey,
+      entities: [
+          {
+              entity: entityPda,
+              components: [
+                  { componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID) },    // source_wallet
+                  { componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID) },    // destination_wallet (same wallet)
+                  { componentId: new PublicKey(PRICE_COMPONENT_PROGRAM_ID) },     // source price
+                  { componentId: new PublicKey(PRICE_COMPONENT_PROGRAM_ID) },     // destination price
+              ],
+          }
+      ],
+      args: {
+          transaction_type: TRANSACTION_TYPE_INITIALIZE,
+          currency_type: CurrencyType.USDC,
+          destination_currency_type: CurrencyType.USDC,  // Same as source for initialization
+          amount: STARTING_USDC_AMOUNT
+      },
   });
 
-  // 5. Fund the Wallet using EconomySystem
-  console.log(`Funding wallet with ${STARTING_USDC_AMOUNT/1000000} USDC`);
-  const fundWalletTxDetails = await ApplySystem({
-    authority: adminKeypair.publicKey,
-    systemId: new PublicKey(ECONOMY_SYSTEM_PROGRAM_ID),
-    world: worldPublicKey,
-    entities: [
-        {
-            entity: entityPda,
-            components: [
-                { componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID) },    // source_wallet
-                { componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID) },    // destination_wallet (same wallet)
-                { componentId: new PublicKey(PRICE_COMPONENT_PROGRAM_ID) },     // source price
-                { componentId: new PublicKey(PRICE_COMPONENT_PROGRAM_ID) },     // destination price
-            ],
-        }
-    ],
-    args: {
-        transaction_type: TRANSACTION_TYPE_INITIALIZE,
-        currency_type: CurrencyType.USDC,
-        destination_currency_type: CurrencyType.USDC,  // Same as source for initialization
-        amount: STARTING_USDC_AMOUNT
-    },
-});
+  console.log("Funding transaction created with args:", {
+      transaction_type: TRANSACTION_TYPE_INITIALIZE,
+      currency_type: CurrencyType.USDC,
+      destination_currency_type: CurrencyType.USDC,
+      amount: STARTING_USDC_AMOUNT
+  });
 
-console.log("Funding transaction created with args:", {
-    transaction_type: TRANSACTION_TYPE_INITIALIZE,
-    currency_type: CurrencyType.USDC,
-    destination_currency_type: CurrencyType.USDC,
-    amount: STARTING_USDC_AMOUNT
-});
+  const fundWalletSig = await sendAndConfirmWithRetry(
+      connection,
+      fundWalletTxDetails.transaction,
+      adminKeypair,
+      'Fund wallet with initial USDC'
+  );
+  console.log(`Wallet funded with ${STARTING_USDC_AMOUNT/1000000} USDC. Signature: ${fundWalletSig}`);
 
-const fundWalletSig = await sendAndConfirmWithRetry(
-    connection,
-    fundWalletTxDetails.transaction,
-    adminKeypair,
-    'Fund wallet with initial USDC'
-);
-console.log(`Wallet funded with ${STARTING_USDC_AMOUNT/1000000} USDC. Signature: ${fundWalletSig}`);
-
-  return {
-    entityPda: entityPda.toBase58(),
-    walletComponentPda: walletComponentPda.toBase58(),
-    ownershipComponentPda: initOwnershipCompResult.componentPda.toBase58(),
-    priceComponentPdas: priceComponents as unknown as PriceComponentPdas,
-    initSignatures: signatures,
-  };
+    return {
+      entityPda: entityPda.toBase58(),
+      walletComponentPda: walletComponentPda.toBase58(),
+      ownershipComponentPda: initOwnershipCompResult.componentPda.toBase58(),
+      priceComponentPdas: priceComponents as unknown as PriceComponentPdas,
+      initSignatures: signatures,
+    };
+  } catch (error) {
+    console.error("Error initializing user wallet:", error);
+    throw error;
+  }
 } 
