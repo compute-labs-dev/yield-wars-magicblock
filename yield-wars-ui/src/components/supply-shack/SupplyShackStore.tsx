@@ -127,6 +127,8 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
         }
     };
 
+    console.log('availableGpus', availableGpus);
+
     if (!user?.wallet?.address) {
         return (
             <div className="text-center py-8">
@@ -163,9 +165,15 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availableGpus.map((gpu) => (
+                    {availableGpus.map((gpu, index) => (
                         <GpuCard
                             key={gpu.entityPda}
+                            price={
+                                index === 0 ? 50 :
+                                index === 1 ? 100 :
+                                index === 2 ? 200 :
+                                50
+                            }
                             gpu={{
                                 ...gpu,
                                 type: gpu.type || "GPU"

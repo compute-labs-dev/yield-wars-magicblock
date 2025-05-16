@@ -2,13 +2,13 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/ownership.json`.
+ * IDL can be found at `target/idl/lottery_prize.json`.
  */
-export type Ownership = {
-  "address": "4M5dU6my7BmVMoAUYmRa3ZnJRMMQzW7e4Yf32wiPh9wS",
+export type LotteryPrize = {
+  "address": "4xUdb6YrCjMeXNFJXXEpHxKVsYoHcRKYFn7Ehz5s8xN9",
   "metadata": {
-    "name": "ownership",
-    "version": "0.2.2",
+    "name": "lotteryPrize",
+    "version": "0.2.3",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
@@ -203,16 +203,16 @@ export type Ownership = {
       ]
     },
     {
-      "name": "ownership",
+      "name": "lotteryPrize",
       "discriminator": [
-        41,
-        84,
-        101,
-        206,
-        145,
-        175,
-        88,
-        65
+        204,
+        231,
+        5,
+        35,
+        196,
+        194,
+        127,
+        117
       ]
     },
     {
@@ -232,18 +232,13 @@ export type Ownership = {
   "errors": [
     {
       "code": 6000,
-      "name": "tooManyEntities",
-      "msg": "Cannot add more entities than the maximum allowed"
+      "name": "betAmountTooLow",
+      "msg": "Bet amount is below the minimum required"
     },
     {
       "code": 6001,
-      "name": "invalidEntityIndex",
-      "msg": "Entity index out of bounds"
-    },
-    {
-      "code": 6002,
-      "name": "notOwned",
-      "msg": "Entity is not owned by this owner"
+      "name": "lotteryInactive",
+      "msg": "Lottery is currently inactive"
     }
   ],
   "types": [
@@ -275,48 +270,84 @@ export type Ownership = {
       }
     },
     {
-      "name": "ownership",
+      "name": "lotteryPrize",
       "docs": [
-        "Ownership component that tracks which entities own other entities",
+        "LotteryPrize component that tracks lottery properties and prize information",
         "",
-        "This component is used to establish ownership relationships between entities in the YieldWars game.",
-        "For example, a player entity can own multiple GPU entities, Data Centers, Land Rights, etc.",
-        "The component stores a list of the public keys of owned entities along with their types."
+        "This component stores information about a lottery including:",
+        "- Current prize pool amount",
+        "- Minimum bet amount",
+        "- Win probability",
+        "- Recent winners and prizes"
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "ownerType",
+            "name": "minBetAmount",
             "docs": [
-              "The type of the entity this ownership component is attached to"
+              "Minimum bet amount in AiFi tokens"
             ],
-            "type": "u8"
+            "type": "u64"
           },
           {
-            "name": "ownedEntities",
+            "name": "winProbability",
             "docs": [
-              "Array of owned entity public keys"
+              "Win probability as a percentage (10000 = 100%, 100 = 1%)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "maxWinMultiplier",
+            "docs": [
+              "Maximum win multiplier (10000 = 10x, 5000 = 5x)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "lastUpdateTime",
+            "docs": [
+              "Timestamp of last lottery update"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "totalBets",
+            "docs": [
+              "Total number of bets placed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalWins",
+            "docs": [
+              "Total number of wins"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "isActive",
+            "docs": [
+              "Whether the lottery is currently active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "recentWinners",
+            "docs": [
+              "Recent winners identified by their public key"
             ],
             "type": {
               "vec": "pubkey"
             }
           },
           {
-            "name": "ownedEntityTypes",
+            "name": "recentPrizes",
             "docs": [
-              "Array of entity types corresponding to owned entities"
-            ],
-            "type": "bytes"
-          },
-          {
-            "name": "ownerEntity",
-            "docs": [
-              "The public key of the entity that owns this entity (if applicable)",
-              "This enables bidirectional ownership tracking"
+              "Prize amounts in AiFi tokens corresponding to recent winners"
             ],
             "type": {
-              "option": "pubkey"
+              "vec": "u64"
             }
           },
           {

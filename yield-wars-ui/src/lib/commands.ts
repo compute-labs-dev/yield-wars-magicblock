@@ -305,28 +305,19 @@ registerCommand({
   profile              View and manage your profile
 
 [TRADING]
-  balance              Show balance
   price <token>        Get token price
-  buy <amt> <token>    Buy specified amount
-  sell <amt> <token>   Sell specified amount
-  portfolio           View holdings
+  wallet              Show your wallet balance and GPUs
+  exchange            Exchange between currencies
+  confirm-exchange    Confirm currency exchange
 
 [GAME]
-  stats               Show stats
-  leaderboard         Show top players
-  yield               Check yields
-  gnft list          List GNFTs
-  comp info          Show COMP info
+  purchase-gpu        Buy GPUs for mining
+  season              Show current season info
 
 [NAVIGATION]
   marketplace         Go to marketplace
   store              Go to supply store
   inventory          Go to inventory
-
-[SOCIAL]
-  refer               Get referral link
-  referral-stats     View referral earnings
-  learn              View tutorials
 
 [SYSTEM]
   resize <height>     Set height (10-90vh)
@@ -342,7 +333,7 @@ registerCommand({
 Type 'help <command>' for details about specific commands
 Examples: 
   help login         Show login command details
-  help buy           Show buy command details`;
+  help exchange      Show exchange command details`;
     }
 });
 
@@ -806,7 +797,7 @@ registerCommand({
             // Execute the exchange using the API endpoint instead of server action
             let response = `Processing exchange...\n\n`;
             
-            // Call the API endpoint
+
             const apiResponse = await fetch('/api/exchange', {
                 method: 'POST',
                 headers: {

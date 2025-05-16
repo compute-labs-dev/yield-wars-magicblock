@@ -227,7 +227,7 @@ function SupplyShackContent() {
 
     if (!ready || !isWorldInitialized ) return (
         <div className="max-h-80vh overflow-y-scroll bg-black text-white p-6">
-            <div className="text-center text-gray-400 py-8">
+            <div className="flex justify-center items-center text-center text-gray-400 py-8">
                 <Loader2 className="w-10 h-10 animate-spin" /> 
             </div>
         </div>

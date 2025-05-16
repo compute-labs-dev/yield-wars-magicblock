@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/upgradeable.json`.
  */
 export type Upgradeable = {
-  "address": "CKctCZqRNwEhZcigRxzvpkcXZ7GMp7EfJLL6YiZQerVk",
+  "address": "dXEvE23Lv9XX5f6ssDbzbGNQmeomC1Mi4U16EoHA3pY",
   "metadata": {
     "name": "upgradeable",
     "version": "0.2.2",

@@ -28,6 +28,7 @@ export interface GPU {
 
 interface GpuCardProps {
     gpu: GPU;
+    price?: number;
     mode: "store" | "inventory";
     onPurchase?: (gpuEntityPda: string) => void;
     onToggleProduction?: (gpu: GPU, setActive: boolean) => void;
@@ -42,6 +43,7 @@ interface GpuCardProps {
 export function GpuCard({
     gpu,
     mode,
+    price,
     onPurchase,
     onToggleProduction,
     onCollectResources,
@@ -238,7 +240,7 @@ export function GpuCard({
                                color: colors.primary,
                                textShadow: `0 0 15px ${colors.primary}40` 
                            }}>
-                            {formatCurrency(gpu.price || 2000)} <span className="text-3xl">USDC</span>
+                            {formatCurrency(gpu.price || price || 2000)} <span className="text-3xl">USDC</span>
                         </p>
                     </div>
                 )}
