@@ -52,21 +52,17 @@ export default function Home() {
   
   const handleShowTerminalClick = () => {
       dispatch(setTerminalVisible(true));
-      if (isInitialLoad) { 
-          dispatch(setInitialLoad(false));
-      }
+
   };
 
   useEffect(() => {
-    setTimeout(() => {
     if (!isResourcesVisible) {
         dispatch(toggleResourcesVisible());
     } 
     if (!isLeaderboardVisible) {
         dispatch(toggleLeaderboardVisible());
     }
-    }, 1000);
-  }, [dispatch]);
+  }, [dispatch, isResourcesVisible, isLeaderboardVisible]);
 
   return (
     <>
@@ -117,7 +113,7 @@ export default function Home() {
 
         {/* Resources Panel - Desktop Only */}
         {isResourcesVisible && (
-            <div className="fixed top-48 left-4 z-20 hidden lg:block">
+            <div className="fixed top-48 left-4 z-20 hidden lg:block md:min-w-[300px]">
                 <ResourcesCard />
             </div>
         )}

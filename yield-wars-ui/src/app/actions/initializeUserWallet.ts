@@ -503,7 +503,7 @@ export async function initializeUserWalletServer(
         });
 
         // Add a small delay between initializations to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
         console.error(`Failed to initialize price component for ${CurrencyType[currencyType]}:`, error);
         throw error; // Re-throw to handle it in the calling function

@@ -70,7 +70,7 @@ export class MagicBlockEngine {
     this.sessionKey = sessionKey;
     this.sessionConfig = sessionConfig;
     this.endpoint = endpoint;
-    this.connection = new Connection(endpoint);
+    this.connection = new Connection('https://api.devnet.solana.com');
   }
 
   getProgramOnChain<T extends Idl>(idl: Record<string, unknown>): Program<T> {

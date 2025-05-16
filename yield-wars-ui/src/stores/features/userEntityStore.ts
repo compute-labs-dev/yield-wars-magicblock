@@ -63,11 +63,15 @@ export const userEntitySlice = createSlice({
     setCurrentEntity: (state, action: PayloadAction<string | null>) => {
       state.currentEntity = action.payload;
     },
+    resetUserEntities: (state) => {
+      state.entities = {};
+      state.currentEntity = null;
+    },
   },
 });
 
 // Export actions
-export const { setUserEntity, setCurrentEntity } = userEntitySlice.actions;
+export const { setUserEntity, setCurrentEntity, resetUserEntities } = userEntitySlice.actions;
 
 // Export selectors
 export const selectUserEntity = (state: { userEntity: UserEntityState }, walletAddress: string) => 

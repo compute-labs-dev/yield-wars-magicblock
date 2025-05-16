@@ -1,31 +1,14 @@
-/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/price_action.json`.
- */
-export type PriceAction = {
-  "address": "6e4kZsL68kwjW1Qagd9su8vYQPZGPyS3Mkg4n8Lt5FZU",
+{
+  "address": "2h3bhNaWoWPX5acUWsDEiL5CwxVEBZDCYWY56ckjW1Yp",
   "metadata": {
-    "name": "priceAction",
+    "name": "leaderboard",
     "version": "0.2.2",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
-  "docs": [
-    "PriceActionSystem handles price component initialization and updates",
-    "",
-    "This system allows entities to:",
-    "- Initialize price components with proper values",
-    "- Enable price updates for components",
-    "- Update prices based on market dynamics",
-    "",
-    "All currency values use 6 decimal places, where 1,000,000 = $1.",
-    "For example, BTC at $60,000 would be stored as 60,000,000,000."
-  ],
   "instructions": [
     {
-      "name": "boltExecute",
+      "name": "bolt_execute",
       "discriminator": [
         75,
         206,
@@ -53,9 +36,6 @@ export type PriceAction = {
     },
     {
       "name": "execute",
-      "docs": [
-        "Main execution function for the PriceActionSystem"
-      ],
       "discriminator": [
         130,
         221,
@@ -68,7 +48,16 @@ export type PriceAction = {
       ],
       "accounts": [
         {
-          "name": "price"
+          "name": "wallet"
+        },
+        {
+          "name": "price_usdc"
+        },
+        {
+          "name": "price_btc"
+        },
+        {
+          "name": "price_aifi"
         },
         {
           "name": "authority"
@@ -76,7 +65,7 @@ export type PriceAction = {
       ],
       "args": [
         {
-          "name": "args",
+          "name": "_args",
           "type": "bytes"
         }
       ],
@@ -87,7 +76,7 @@ export type PriceAction = {
   ],
   "accounts": [
     {
-      "name": "price",
+      "name": "Price",
       "discriminator": [
         50,
         107,
@@ -98,53 +87,41 @@ export type PriceAction = {
         39,
         75
       ]
+    },
+    {
+      "name": "Wallet",
+      "discriminator": [
+        24,
+        89,
+        59,
+        139,
+        81,
+        154,
+        232,
+        95
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "invalidOperationType",
-      "msg": "Invalid operation type"
+      "name": "CalculationOverflow",
+      "msg": "Calculation failed due to overflow"
     },
     {
       "code": 6001,
-      "name": "initializationFailed",
-      "msg": "Price initialization failed"
+      "name": "SoarSubmissionFailed",
+      "msg": "SOAR submission failed"
     },
     {
       "code": 6002,
-      "name": "enablingFailed",
-      "msg": "Price enabling failed"
-    },
-    {
-      "code": 6003,
-      "name": "updateFailed",
-      "msg": "Price update failed"
-    },
-    {
-      "code": 6004,
-      "name": "invalidCurrencyType",
-      "msg": "Invalid currency type"
-    },
-    {
-      "code": 6005,
-      "name": "priceComponentError",
-      "msg": "Price component error"
-    },
-    {
-      "code": 6006,
-      "name": "arithmeticOverflow",
-      "msg": "Arithmetic overflow in calculation"
-    },
-    {
-      "code": 6007,
-      "name": "priceUpdatesDisabled",
-      "msg": "Price updates are currently disabled"
+      "name": "InvalidOperation",
+      "msg": "Invalid operation type"
     }
   ],
   "types": [
     {
-      "name": "boltMetadata",
+      "name": "BoltMetadata",
       "docs": [
         "Metadata for the component."
       ],
@@ -159,7 +136,7 @@ export type PriceAction = {
       }
     },
     {
-      "name": "price",
+      "name": "Price",
       "docs": [
         "Price component that tracks market values and price history",
         "",
@@ -171,35 +148,35 @@ export type PriceAction = {
         "kind": "struct",
         "fields": [
           {
-            "name": "currentPrice",
+            "name": "current_price",
             "docs": [
               "Current price in USDC (base currency)"
             ],
             "type": "u64"
           },
           {
-            "name": "previousPrice",
+            "name": "previous_price",
             "docs": [
               "Previous price for calculating price change"
             ],
             "type": "u64"
           },
           {
-            "name": "lastUpdateTime",
+            "name": "last_update_time",
             "docs": [
               "Timestamp of last price update"
             ],
             "type": "i64"
           },
           {
-            "name": "minPrice",
+            "name": "min_price",
             "docs": [
               "Minimum price allowed"
             ],
             "type": "u64"
           },
           {
-            "name": "maxPrice",
+            "name": "max_price",
             "docs": [
               "Maximum price allowed"
             ],
@@ -213,35 +190,35 @@ export type PriceAction = {
             "type": "u32"
           },
           {
-            "name": "updateFrequency",
+            "name": "update_frequency",
             "docs": [
               "Price update frequency in seconds"
             ],
             "type": "u32"
           },
           {
-            "name": "priceType",
+            "name": "price_type",
             "docs": [
               "Type of the priced entity (uses same enum as Ownership component)"
             ],
             "type": "u8"
           },
           {
-            "name": "priceUpdatesEnabled",
+            "name": "price_updates_enabled",
             "docs": [
               "Whether price updates are currently enabled"
             ],
             "type": "bool"
           },
           {
-            "name": "priceTrend",
+            "name": "price_trend",
             "docs": [
               "Price trend direction (-100 to +100, where 0 is neutral)"
             ],
             "type": "i8"
           },
           {
-            "name": "priceHistory",
+            "name": "price_history",
             "docs": [
               "Array of historical prices (most recent first, max 24 entries)"
             ],
@@ -253,31 +230,93 @@ export type PriceAction = {
             }
           },
           {
-            "name": "historyIndex",
+            "name": "history_index",
             "docs": [
               "Index for circular price history array"
             ],
             "type": "u8"
           },
           {
-            "name": "supplyFactor",
+            "name": "supply_factor",
             "docs": [
               "Supply factor affecting price (10000 = neutral)"
             ],
             "type": "u32"
           },
           {
-            "name": "demandFactor",
+            "name": "demand_factor",
             "docs": [
               "Demand factor affecting price (10000 = neutral)"
             ],
             "type": "u32"
           },
           {
-            "name": "boltMetadata",
+            "name": "bolt_metadata",
             "type": {
               "defined": {
-                "name": "boltMetadata"
+                "name": "BoltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Wallet",
+      "docs": [
+        "Wallet component that tracks currency balances for the player",
+        "",
+        "This component stores the balances of different cryptocurrencies",
+        "that a player can own in the YieldWars game. It tracks:",
+        "- USDC: Base currency used for most transactions",
+        "- BTC: Bitcoin, a tradable cryptocurrency with fluctuating value",
+        "- ETH: Ethereum, a tradable cryptocurrency with fluctuating value",
+        "- SOL: Solana, a tradable cryptocurrency with fluctuating value",
+        "- AiFi: Special token produced by GPUs, used for advanced upgrades"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdc_balance",
+            "docs": [
+              "Balance of USDC (stablecoin), the base currency"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_balance",
+            "docs": [
+              "Balance of Bitcoin (BTC)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "eth_balance",
+            "docs": [
+              "Balance of Ethereum (ETH)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "sol_balance",
+            "docs": [
+              "Balance of Solana (SOL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "aifi_balance",
+            "docs": [
+              "Balance of AiFi tokens"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bolt_metadata",
+            "type": {
+              "defined": {
+                "name": "BoltMetadata"
               }
             }
           }
@@ -285,4 +324,4 @@ export type PriceAction = {
       }
     }
   ]
-};
+}

@@ -24,26 +24,44 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
         user?.wallet?.address ? selectUserEntity(state, user.wallet.address) : null
     );
 
+    // Debug info
+    useEffect(() => {
+        console.log("SupplyShackStore - Available GPUs:", availableGpus);
+        console.log("SupplyShackStore - Is World Initialized:", isWorldInitialized);
+    }, [availableGpus, isWorldInitialized]);
+
     // Set a timer to stop showing the loading state after world is initialized and a reasonable timeout
     useEffect(() => {
-        // If we have GPUs already, no need to show loading
-        if (availableGpus.length > 0) {
-            setIsInitialLoading(false);
-            return;
-        }
-
         // If world isn't initialized yet, keep loading
         if (!isWorldInitialized) {
             return;
         }
 
-        // After world is initialized, wait a bit for GPUs to load, then stop showing loading
+        // Check if we have GPUs already
+        if (availableGpus.length > 0) {
+            setIsInitialLoading(false);
+            return;
+        }
+
+        // After world is initialized, wait a bit longer for GPUs to load, then stop showing loading
         const timer = setTimeout(() => {
             setIsInitialLoading(false);
-        }, 2000);
+        }, 5000); // Increase timeout to 5 seconds to give more time for GPUs to load
 
         return () => clearTimeout(timer);
     }, [availableGpus.length, isWorldInitialized]);
+
+    // Force-stop loading after a maximum time, regardless of GPU data
+    useEffect(() => {
+        const maxLoadingTimer = setTimeout(() => {
+            if (isInitialLoading) {
+                console.log("SupplyShackStore - Force-stopping loading state after timeout");
+                setIsInitialLoading(false);
+            }
+        }, 10000); // 10 second maximum loading time
+        
+        return () => clearTimeout(maxLoadingTimer);
+    }, [isInitialLoading]);
 
     const handlePurchaseGpu = async (gpuEntityPda: string) => {
         if (!user?.wallet?.address || !userEntity?.entityPda) {
@@ -86,12 +104,14 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
                 destinationPricePda: usdcPricePda
             });
 
+            console.log('💰 result', result);
+
             if (result) {
                 toast.success(
                     <div>
                         <p>GPU purchased successfully!</p>
                         <a 
-                            href={`https://solscan.io/tx/${result}?cluster=devnet`} 
+                            href={`https://solscan.io/tx/${result.purchaseSig}?cluster=devnet`} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-400 hover:underline"
@@ -106,6 +126,8 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
             toast.error(`Failed to purchase GPU: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
+
+    console.log('availableGpus', availableGpus);
 
     if (!user?.wallet?.address) {
         return (
@@ -143,9 +165,15 @@ export function SupplyShackStore({ user }: SupplyShackStoreProps) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availableGpus.map((gpu) => (
+                    {availableGpus.map((gpu, index) => (
                         <GpuCard
                             key={gpu.entityPda}
+                            price={
+                                index === 0 ? 50 :
+                                index === 1 ? 100 :
+                                index === 2 ? 200 :
+                                50
+                            }
                             gpu={{
                                 ...gpu,
                                 type: gpu.type || "GPU"

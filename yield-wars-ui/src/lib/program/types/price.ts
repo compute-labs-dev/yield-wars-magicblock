@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/price.json`.
  */
 export type Price = {
-  "address": "C4ir1WkySfTgeLA58u2q4zjbxnP5ir8tSAZb5tD5yYFa",
+  "address": "DTtX2W21uM3oRdJCSTzmjb5ujvY7i6aA1kbEakeBbrV6",
   "metadata": {
     "name": "price",
     "version": "0.2.2",

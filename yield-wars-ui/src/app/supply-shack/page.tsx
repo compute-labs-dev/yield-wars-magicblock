@@ -30,6 +30,7 @@ import { setTerminalHeight } from "@/stores/features/uiSlice";
 import { closeTerminal } from "@/stores/features/uiSlice";
 import ShowTerminalButton from "@/components/terminals/ShowTerminalButton";
 import PrimaryTerminal from "@/components/terminals/PrimaryTerminal";
+import { Loader2 } from "lucide-react";
 
 // Create a separate client component for the content
 function SupplyShackContent() {
@@ -224,8 +225,13 @@ function SupplyShackContent() {
         }
     }, [isWorldInitialized, loadWorldFromConstants]);
 
-    if (!ready) return <p>Loading Privy...</p>;
-    if (!authenticated) return <LoginContainer />;
+    if (!ready || !isWorldInitialized ) return (
+        <div className="max-h-80vh overflow-y-scroll bg-black text-white p-6">
+            <div className="flex justify-center items-center text-center text-gray-400 py-8">
+                <Loader2 className="w-10 h-10 animate-spin" /> 
+            </div>
+        </div>
+    );
 
     return (
         <div className="max-h-80vh overflow-y-scroll bg-black text-white p-6">

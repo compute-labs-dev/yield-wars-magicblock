@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/economy.json`.
  */
 export type Economy = {
-  "address": "De3S9pgMXPwgMKydcq4TQmRZ4SnADxNC4ixnBrLNsycc",
+  "address": "CqPDvk7AJ7hVYsEvuFUDkZgYjnn5zy5YWEyinkRdFGb1",
   "metadata": {
     "name": "economy",
     "version": "0.2.2",

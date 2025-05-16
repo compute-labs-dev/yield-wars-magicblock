@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/upgrade.json`.
  */
 export type Upgrade = {
-  "address": "C5rv7atbb2NxYS2yhfTci67yKwrWKJ3d1jKhAUMAtLur",
+  "address": "E2v1mJyyZJif5podWB85KwBzNbUtE2fgqCLnTXmH9Lqq",
   "metadata": {
     "name": "upgrade",
     "version": "0.2.2",

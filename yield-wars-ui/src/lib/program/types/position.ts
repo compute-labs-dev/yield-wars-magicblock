@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/position.json`.
  */
 export type Position = {
-  "address": "14BVaU5KCqPfnzyeFfSgeG1C7NHT424mweSUy7fp3TJA",
+  "address": "FG3FpqgB61FFDAjHa9N1Q2cpGqSnYypcaJL6cTK7MtfV",
   "metadata": {
     "name": "position",
     "version": "0.2.2",
