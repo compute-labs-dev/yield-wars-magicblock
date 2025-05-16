@@ -1,4 +1,5 @@
 import { SoarProgram, GameType, Genre } from "@magicblock-labs/soar-sdk";
+import { sendTransaction } from '@solana-developers/helpers';
 import { Connection, Keypair, sendAndConfirmTransaction } from "@solana/web3.js";
 import fs from 'fs';
 import path from 'path';
@@ -45,7 +46,7 @@ async function main() {
     );
     
     // Send and confirm transaction
-    await sendAndConfirmTransaction(connection, transaction, [gameKeypair, adminKeypair]);
+    await sendAndConfirmTransaction(connection, transaction, [gameKeypair, adminKeypair], {skipPreflight: true});
     console.log("Game registered with SOAR!");
     
     // Create a leaderboard
@@ -60,12 +61,12 @@ async function main() {
       adminKeypair.publicKey,
       LEADERBOARD_DESCRIPTION,
       nftMeta, // No NFT
-      1000, // scoresToRetain
+      5, // scoresToRetain
       false, // Descending (higher is better)
       6, // USDC decimals
     );
     
-    await sendAndConfirmTransaction(connection, leaderboardTx.transaction, [adminKeypair]);
+    await sendAndConfirmTransaction(connection, leaderboardTx.transaction, [adminKeypair], {skipPreflight: true});
     console.log("Successfully created wealth leaderboard!");
 
     // Save configuration
@@ -101,6 +102,7 @@ function loadOrCreateAdminKeypair() {
   const keyPath = path.join(os.homedir(), '.config', 'solana', 'id.json');
   try {
     const rawKey = fs.readFileSync(keyPath, 'utf-8');
+    console.log("Raw key:", rawKey);
     return Keypair.fromSecretKey(Buffer.from(JSON.parse(rawKey)));
   } catch (err) {
     console.log('No key found at default location, generating ephemeral keypair');
