@@ -5,6 +5,7 @@ import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solan
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
 import { useProgram } from "@/components/providers/ProgramProvider";
+import { AnchorProvider } from "@coral-xyz/anchor";
 
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
@@ -38,17 +39,15 @@ export function MagicBlockEngineProvider({
       setIsClient(true);
     }
 
-    let key: Keypair;
-    
-    try {
-      // If we have an anchor wallet, use its public key
-      if (anchorWallet) {
-        key = Keypair.generate(); // Generate a new keypair but we'll use anchor wallet for signing
-        setSessionKey(key);
-        return;
-      }
+    // If we have a program context, we don't need to manage our own session key
+    if (program?.provider) {
+      const dummyKey = Keypair.generate();
+      setSessionKey(dummyKey);
+      return;
+    }
 
-      // Fallback to local storage if no anchor wallet
+    let key: Keypair;
+    try {
       const sessionKeyString = localStorage.getItem(SESSION_LOCAL_STORAGE);
       if (sessionKeyString) {
         key = Keypair.fromSecretKey(
@@ -64,15 +63,23 @@ export function MagicBlockEngineProvider({
       setSessionKey(key);
     } catch (error) {
       console.error("Error initializing session key:", error);
-      // Fallback to a new keypair if localStorage fails
       key = Keypair.generate();
       setSessionKey(key);
     }
-  }, [isClient, anchorWallet]);
+  }, [isClient, program]);
 
   const engine = React.useMemo(() => {
     if (!isClient || !sessionKey || !connection) {
       return {} as MagicBlockEngine;
+    }
+
+    // If we have a program context, use its provider
+    if (program?.provider) {
+      const provider = program.provider as AnchorProvider;
+      // Set the provider globally for Anchor
+      if (typeof window !== 'undefined') {
+        (window as any).ANCHOR_PROVIDER = provider;
+      }
     }
 
     return new MagicBlockEngine(
@@ -86,7 +93,7 @@ export function MagicBlockEngineProvider({
       },
       connection.rpcEndpoint
     );
-  }, [isClient, sessionKey, privy, solanaWallets, signTransaction, connection]);
+  }, [isClient, sessionKey, privy, solanaWallets, signTransaction, connection, program]);
 
   if (!isClient || !sessionKey) {
     return null;
