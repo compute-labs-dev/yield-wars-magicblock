@@ -19,7 +19,6 @@ import {
 // Import necessary functions from actions
 import { fetchWalletBalance } from '@/app/actions/fetchWalletBalance';
 import { getWalletGpus } from '@/app/actions/getWalletGpus';
-import { exchangeCurrency } from '@/app/actions/exchangeCurrency';
 import { purchaseGpu } from '@/app/actions/purchaseGpu';
 import { CurrencyType } from '@/lib/constants/programEnums';
 import * as constants from '@/lib/consts';
@@ -804,10 +803,25 @@ registerCommand({
                 destinationCurrencyEntityPda: destinationCurrencyEntity.entityPda
             };
             
-            // Execute the exchange
+            // Execute the exchange using the API endpoint instead of server action
             let response = `Processing exchange...\n\n`;
             
-            const signature = await exchangeCurrency(exchangeParams);
+            // Call the API endpoint
+            const apiResponse = await fetch('/api/exchange', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(exchangeParams),
+            });
+            
+            const data = await apiResponse.json();
+            
+            if (!apiResponse.ok) {
+                throw new Error(data.error || 'Failed to exchange currency');
+            }
+            
+            const signature = data.signature;
             
             response += `Exchange completed successfully!\n`;
             response += `Transaction signature: ${signature.slice(0, 8)}...\n\n`;
