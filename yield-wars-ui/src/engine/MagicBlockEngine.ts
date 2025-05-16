@@ -42,6 +42,8 @@ interface WalletAdapter {
   icon: string;
 }
 
+const testWalletPath = process.env.NEXT_PUBLIC_TEST_WALLET_PATH || '/test.json';
+
 export class MagicBlockEngine {
   private walletContext: WalletContextState;
   private sessionKey: Keypair;
