@@ -61,10 +61,15 @@ export default function ScratchPage() {
 
     // Add inventory state and hooks
     const [selectedAsset, setSelectedAsset] = useState<AssetDetails | null>(null);
-    const { ownedAssets, isLoading: isLoadingAssets, error: assetsError, fetchOwnedAssets, refreshAssetDetails } = useOwnedAssets();
+    const { ownedAssets, isLoading: isLoadingAssets, error: assetsError, fetchOwnedAssets } = useOwnedAssets();
     const { collectResources, toggleProduction, calculateCollectableResources, isLoading: isLoadingProduction } = useAssetProduction();
-    const { upgradeAsset, canUpgrade, isLoading: isLoadingUpgrade } = useAssetUpgrade();
-    const { stakeAsset, unstakeAsset, collectStakingRewards, calculatePenalty, isLoading: isLoadingStaking } = useAssetStaking();
+    const { upgradeAsset, isLoading: isLoadingUpgrade } = useAssetUpgrade();
+    const { 
+        stakeAsset, 
+        unstakeAsset, 
+        collectStakingRewards,
+        isLoading: isLoadingStaking 
+    } = useAssetStaking();
     const { purchaseGpu, isLoading: isLoadingPurchase } = usePurchaseGpu();
     
     // Get available GPUs from Redux store
@@ -117,7 +122,7 @@ export default function ScratchPage() {
     const worldPda = useSelector(selectWorldPda);
 
     // Replace the old GPU fetching hook with our new one
-    const { gpus, isLoading: isLoadingGpus, error: gpusError, fetchWalletGpus } = useWalletGpus(initializedUserEntityPda);
+    const { gpus, isLoading: isLoadingGpus, error: gpusError, fetchWalletGpus } = useWalletGpus(lastKnownEntityPda);
 
     // Load user entity from Redux when available
     useEffect(() => {
@@ -303,7 +308,7 @@ export default function ScratchPage() {
             });
             getWorldData();
         }
-    }, [user?.wallet?.address, worldPdaInit, getWorldData]);
+    }, [user?.wallet?.address, worldPdaInit, getWorldData, lastKnownEntityPda]);
 
     // Add effect to persist entity PDA when found
     useEffect(() => {
@@ -688,201 +693,106 @@ export default function ScratchPage() {
     }, [user?.wallet?.address, worldPdaInit, initializedUserEntityPda, loadOwnedAssets]);
 
     // Handler for collecting resources from an asset
-    const handleCollectResources = async (asset: AssetDetails) => {
-        if (!user?.wallet?.address || !asset.productionComponentPda) {
-            toast.error("Cannot collect resources: Missing required components");
+    const handleCollectResources = async (gpu: GpuEntityDetails) => {
+        if (!user?.wallet?.address) {
+            toast.error("Please connect your wallet first");
             return;
         }
-        
+
         try {
-            const result = await collectResources({
-                worldPda: worldPdaInit,
-                entityPda: asset.entityPda,
-                productionComponentPda: asset.productionComponentPda,
-                walletComponentPda: initializedUserEntityPda, // Using user's wallet entity
+            const signature = await collectResources({
+                entityPda: gpu.entityPda,
+                productionComponentPda: gpu.productionPda,
+                walletComponentPda: gpu.walletComponentPda,
                 userWalletPublicKey: user.wallet.address
             });
             
-            if (result) {
-                toast.success(
-                    <div>
-                        <p>Resources collected successfully.</p>
-                        <Link className="text-blue-500" href={`https://explorer.solana.com/tx/${result}?cluster=devnet`} target="_blank">View on Solana Explorer</Link>
-                    </div>
-                );
-                
-                // Refresh asset details
-                await refreshAssetDetails(asset.entityPda);
+            if (signature) {
+                toast.success("Resources collected successfully!");
+                await fetchWalletGpus();
             }
-        } catch (error) {
-            console.error("Error collecting resources:", error);
-            toast.error(`Failed to collect resources: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err) {
+            console.error("Error collecting resources:", err);
+            toast.error("Failed to collect resources");
         }
     };
-    
-    // Handler for toggling production status of an asset
-    const handleToggleProduction = async (asset: AssetDetails, setActive: boolean) => {
-        if (!user?.wallet?.address || !asset.productionComponentPda) {
-            toast.error("Cannot toggle production: Missing required components");
+
+    const handleToggleProduction = async (gpu: GpuEntityDetails, setActive: boolean) => {
+        if (!user?.wallet?.address) {
+            toast.error("Please connect your wallet first");
             return;
         }
-        
+
         try {
-            const result = await toggleProduction({
-                worldPda: worldPdaInit,
-                entityPda: asset.entityPda,
-                productionComponentPda: asset.productionComponentPda,
+            const signature = await toggleProduction({
+                entityPda: gpu.entityPda,
+                productionComponentPda: gpu.productionPda,
                 setActive,
                 userWalletPublicKey: user.wallet.address
             });
             
-            if (result) {
-                toast.success(
-                    <div>
-                        <p>{setActive ? 'Production started' : 'Production stopped'} successfully.</p>
-                        <Link className="text-blue-500" href={`https://explorer.solana.com/tx/${result}?cluster=devnet`} target="_blank">View on Solana Explorer</Link>
-                    </div>
-                );
-                
-                // Refresh asset details
-                await refreshAssetDetails(asset.entityPda);
+            if (signature) {
+                toast.success(`Production ${setActive ? 'started' : 'stopped'} successfully!`);
+                await fetchWalletGpus();
             }
-        } catch (error) {
-            console.error(`Error ${setActive ? 'starting' : 'stopping'} production:`, error);
-            toast.error(`Failed to ${setActive ? 'start' : 'stop'} production: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err) {
+            console.error(`Error ${setActive ? 'starting' : 'stopping'} production:`, err);
+            toast.error(`Failed to ${setActive ? 'start' : 'stop'} production`);
         }
     };
-    
-    // Handler for upgrading an asset
-    const handleUpgradeAsset = async (asset: AssetDetails) => {
-        if (!user?.wallet?.address || !asset.upgradeableComponentPda || !asset.productionComponentPda) {
-            toast.error("Cannot upgrade asset: Missing required components");
-            return;
-        }
-        
+
+    const handleStakeAsset = async (gpu: GpuEntityDetails) => {
         try {
-            const result = await upgradeAsset({
-                worldPda: worldPdaInit,
-                entityPda: asset.entityPda,
-                upgradeableComponentPda: asset.upgradeableComponentPda,
-                walletComponentPda: initializedUserEntityPda, // Using user's wallet entity
-                productionComponentPda: asset.productionComponentPda,
-                userWalletPublicKey: user.wallet.address
+            const signature = await stakeAsset({
+                entityPda: gpu.entityPda,
+                stakeableComponentPda: gpu.stakeablePda,
+                walletComponentPda: gpu.walletComponentPda
             });
             
-            if (result) {
-                toast.success(
-                    <div>
-                        <p>Asset upgraded successfully.</p>
-                        <Link className="text-blue-500" href={`https://explorer.solana.com/tx/${result}?cluster=devnet`} target="_blank">View on Solana Explorer</Link>
-                    </div>
-                );
-                
-                // Refresh asset details
-                await refreshAssetDetails(asset.entityPda);
+            if (signature) {
+                toast.success("Asset staked successfully!");
+                await fetchWalletGpus();
             }
-        } catch (error) {
-            console.error("Error upgrading asset:", error);
-            toast.error(`Failed to upgrade asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err) {
+            console.error("Error staking asset:", err);
+            toast.error("Failed to stake asset");
         }
     };
-    
-    // Handler for staking an asset
-    const handleStakeAsset = async (asset: AssetDetails) => {
-        if (!user?.wallet?.address || !asset.stakeableComponentPda) {
-            toast.error("Cannot stake asset: Missing required components");
-            return;
-        }
-        
+
+    const handleUnstakeAsset = async (gpu: GpuEntityDetails) => {
         try {
-            const result = await stakeAsset({
-                worldPda: worldPdaInit,
-                entityPda: asset.entityPda,
-                stakeableComponentPda: asset.stakeableComponentPda,
-                walletComponentPda: initializedUserEntityPda, // Using user's wallet entity
-                userWalletPublicKey: user.wallet.address
+            const signature = await unstakeAsset({
+                entityPda: gpu.entityPda,
+                stakeableComponentPda: gpu.stakeablePda,
+                walletComponentPda: gpu.walletComponentPda
             });
             
-            if (result) {
-                toast.success(
-                    <div>
-                        <p>Asset staked successfully.</p>
-                        <Link className="text-blue-500" href={`https://explorer.solana.com/tx/${result}?cluster=devnet`} target="_blank">View on Solana Explorer</Link>
-                    </div>
-                );
-                
-                // Refresh asset details
-                await refreshAssetDetails(asset.entityPda);
+            if (signature) {
+                toast.success("Asset unstaked successfully!");
+                await fetchWalletGpus();
             }
-        } catch (error) {
-            console.error("Error staking asset:", error);
-            toast.error(`Failed to stake asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err) {
+            console.error("Error unstaking asset:", err);
+            toast.error("Failed to unstake asset");
         }
     };
-    
-    // Handler for unstaking an asset
-    const handleUnstakeAsset = async (asset: AssetDetails) => {
-        if (!user?.wallet?.address || !asset.stakeableComponentPda) {
-            toast.error("Cannot unstake asset: Missing required components");
-            return;
-        }
-        
+
+    // Fix the collectStakingRewards reference
+    const handleCollectStakingRewards = async (gpu: GpuEntityDetails) => {
         try {
-            const result = await unstakeAsset({
-                worldPda: worldPdaInit,
-                entityPda: asset.entityPda,
-                stakeableComponentPda: asset.stakeableComponentPda,
-                walletComponentPda: initializedUserEntityPda, // Using user's wallet entity
-                userWalletPublicKey: user.wallet.address
+            const signature = await collectStakingRewards({
+                entityPda: gpu.entityPda,
+                stakeableComponentPda: gpu.stakeablePda,
+                walletComponentPda: gpu.walletComponentPda
             });
             
-            if (result) {
-                toast.success(
-                    <div>
-                        <p>Asset unstaked successfully.</p>
-                        <Link className="text-blue-500" href={`https://explorer.solana.com/tx/${result}?cluster=devnet`} target="_blank">View on Solana Explorer</Link>
-                    </div>
-                );
-                
-                // Refresh asset details
-                await refreshAssetDetails(asset.entityPda);
+            if (signature) {
+                toast.success("Staking rewards collected successfully!");
+                await fetchWalletGpus();
             }
-        } catch (error) {
-            console.error("Error unstaking asset:", error);
-            toast.error(`Failed to unstake asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    };
-    
-    // Handler for collecting staking rewards
-    const handleCollectStakingRewards = async (asset: AssetDetails) => {
-        if (!user?.wallet?.address || !asset.stakeableComponentPda) {
-            toast.error("Cannot collect staking rewards: Missing required components");
-            return;
-        }
-        
-        try {
-            const result = await collectStakingRewards({
-                worldPda: worldPdaInit,
-                entityPda: asset.entityPda,
-                stakeableComponentPda: asset.stakeableComponentPda,
-                walletComponentPda: initializedUserEntityPda, // Using user's wallet entity
-                userWalletPublicKey: user.wallet.address
-            });
-            
-            if (result) {
-                toast.success(
-                    <div>
-                        <p>Staking rewards collected successfully.</p>
-                        <Link className="text-blue-500" href={`https://explorer.solana.com/tx/${result}?cluster=devnet`} target="_blank">View on Solana Explorer</Link>
-                    </div>
-                );
-                
-                // Refresh asset details
-                await refreshAssetDetails(asset.entityPda);
-            }
-        } catch (error) {
-            console.error("Error collecting staking rewards:", error);
-            toast.error(`Failed to collect staking rewards: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err) {
+            console.error("Error collecting staking rewards:", err);
+            toast.error("Failed to collect staking rewards");
         }
     };
 
@@ -986,12 +896,12 @@ export default function ScratchPage() {
     // Add this function inside the component
     const loadWorldFromConstants = useCallback(() => {
         // Helper function to safely check if a property exists
-        const hasProperty = (obj: any, prop: string): boolean => {
+        const hasProperty = (obj: Record<string, unknown>, prop: string): boolean => {
             return obj && prop in obj && obj[prop] !== undefined;
         };
         
         // Helper function to safely get PublicKey as string
-        const getKeyString = (obj: any, prop: string): string | null => {
+        const getKeyString = (obj: Record<string, unknown>, prop: string): string | null => {
             if (hasProperty(obj, prop) && obj[prop] && typeof obj[prop].toString === 'function') {
                 return obj[prop].toString();
             }
@@ -1065,6 +975,7 @@ export default function ScratchPage() {
                         productionPda: getKeyString(constants, productionKey) || "",
                         upgradeablePda: getKeyString(constants, upgradeableKey) || "",
                         stakeablePda: getKeyString(constants, stakeableKey) || "",
+                        walletComponentPda: "", // Add empty string as default
                         type: gpuType.name
                     });
                     console.log(`Loaded ${gpuType.name} entity`);
@@ -1097,7 +1008,7 @@ export default function ScratchPage() {
             if (loaded) {
                 console.log("World loaded from constants. No need to initialize a new world.");
             } else {
-                console.log("No world constants found or loading failed. You'll need to initialize a new world.");
+                console.log("No world constants found or loading failed. You&apos;ll need to initialize a new world.");
             }
         }
     }, [isWorldInitialized, loadWorldFromConstants]);
@@ -1113,6 +1024,49 @@ export default function ScratchPage() {
             });
         }
     }, [user?.wallet?.address, worldPdaInit, initializedUserEntityPda]);
+
+    // Convert AssetDetails to GpuEntityDetails
+    const assetToGpu = (asset: AssetDetails): GpuEntityDetails => {
+        if (!asset.ownershipComponentPda || !asset.productionComponentPda || !asset.upgradeableComponentPda || !asset.stakeableComponentPda) {
+            throw new Error("Asset is missing required component PDAs");
+        }
+
+        return {
+            entityPda: asset.entityPda,
+            ownershipPda: asset.ownershipComponentPda,
+            productionPda: asset.productionComponentPda,
+            upgradeablePda: asset.upgradeableComponentPda,
+            stakeablePda: asset.stakeableComponentPda,
+            walletComponentPda: initializedUserEntityPda,
+            type: asset.entityType.toString()
+        };
+    };
+
+    const handleUpgradeAsset = async (gpu: GpuEntityDetails) => {
+        if (!user?.wallet?.address || !worldPda) {
+            toast.error("Please connect your wallet and ensure world is initialized");
+            return;
+        }
+
+        try {
+            const signature = await upgradeAsset({
+                worldPda,
+                entityPda: gpu.entityPda,
+                upgradeableComponentPda: gpu.upgradeablePda,
+                walletComponentPda: gpu.walletComponentPda,
+                productionComponentPda: gpu.productionPda,
+                userWalletPublicKey: user.wallet.address
+            });
+            
+            if (signature) {
+                toast.success("Asset upgraded successfully!");
+                await fetchWalletGpus();
+            }
+        } catch (err) {
+            console.error("Error upgrading asset:", err);
+            toast.error("Failed to upgrade asset");
+        }
+    };
 
     if (!ready) return <p>Loading Privy...</p>;
     if (!authenticated) return <LoginContainer />;
@@ -1140,7 +1094,7 @@ export default function ScratchPage() {
                     <div className="w-full max-w-md p-4 mb-6 border rounded-lg shadow-md">
                         <h2 className="text-xl font-semibold mb-3 text-center text-white">Initialize Game World</h2>
                         <p className="text-sm mb-3 text-gray-400">
-                            You can either initialize a new world or use existing constants if you've already initialized one before.
+                            You can either initialize a new world or use existing constants if you&apos;ve already initialized one before.
                         </p>
                         <div className="flex flex-col space-y-2">
                             <Button 
@@ -1435,7 +1389,14 @@ export default function ScratchPage() {
                                                 size="sm"
                                                 variant={selectedAsset.production.isActive ? "destructive" : "default"}
                                                 className="text-xs"
-                                                onClick={() => handleToggleProduction(selectedAsset, !selectedAsset.production!.isActive)}
+                                                onClick={() => {
+                                                    try {
+                                                        handleToggleProduction(assetToGpu(selectedAsset), !selectedAsset.production!.isActive);
+                                                    } catch (err) {
+                                                        console.log("Failed to toggle production: Missing required component PDAs", err);
+                                                        toast.error("Failed to toggle production: Missing required component PDAs");
+                                                    }
+                                                }}
                                                 disabled={isLoadingProduction}
                                             >
                                                 {selectedAsset.production.isActive ? "Stop" : "Start"} Production
@@ -1444,7 +1405,14 @@ export default function ScratchPage() {
                                             <Button 
                                                 size="sm"
                                                 className="text-xs bg-green-600 hover:bg-green-700"
-                                                onClick={() => handleCollectResources(selectedAsset)}
+                                                onClick={() => {
+                                                    try {
+                                                        handleCollectResources(assetToGpu(selectedAsset));
+                                                    } catch (err) {
+                                                        console.log("Failed to collect resources: Missing required component PDAs", err);
+                                                        toast.error("Failed to collect resources: Missing required component PDAs");
+                                                    }
+                                                }}
                                                 disabled={isLoadingProduction || !selectedAsset.production.isActive}
                                             >
                                                 Collect Resources
@@ -1475,7 +1443,14 @@ export default function ScratchPage() {
                                             <Button 
                                                 size="sm"
                                                 className="text-xs bg-yellow-600 hover:bg-yellow-700 w-full"
-                                                onClick={() => handleUpgradeAsset(selectedAsset)}
+                                                onClick={() => {
+                                                    try {
+                                                        handleUpgradeAsset(assetToGpu(selectedAsset));
+                                                    } catch (err) {
+                                                        console.log("Failed to upgrade asset: Missing required component PDAs", err);
+                                                        toast.error("Failed to upgrade asset: Missing required component PDAs");
+                                                    }
+                                                }}
                                                 disabled={
                                                     isLoadingUpgrade || 
                                                     !selectedAsset.upgradeable.canUpgrade || 
@@ -1523,7 +1498,14 @@ export default function ScratchPage() {
                                                         size="sm"
                                                         variant="destructive"
                                                         className="text-xs"
-                                                        onClick={() => handleUnstakeAsset(selectedAsset)}
+                                                        onClick={() => {
+                                                            try {
+                                                                handleUnstakeAsset(assetToGpu(selectedAsset));
+                                                            } catch (err) {
+                                                                console.log("Failed to unstake asset: Missing required component PDAs", err);
+                                                                toast.error("Failed to unstake asset: Missing required component PDAs");
+                                                            }
+                                                        }}
                                                         disabled={isLoadingStaking}
                                                     >
                                                         Unstake
@@ -1532,7 +1514,14 @@ export default function ScratchPage() {
                                                     <Button 
                                                         size="sm"
                                                         className="text-xs bg-purple-600 hover:bg-purple-700"
-                                                        onClick={() => handleCollectStakingRewards(selectedAsset)}
+                                                        onClick={() => {
+                                                            try {
+                                                                handleCollectStakingRewards(assetToGpu(selectedAsset));
+                                                            } catch (err) {
+                                                                console.log("Failed to collect rewards: Missing required component PDAs", err);
+                                                                toast.error("Failed to collect rewards: Missing required component PDAs");
+                                                            }
+                                                        }}
                                                         disabled={
                                                             isLoadingStaking || 
                                                             !selectedAsset.stakeable.canClaimRewards || 
@@ -1546,7 +1535,14 @@ export default function ScratchPage() {
                                                 <Button 
                                                     size="sm"
                                                     className="text-xs bg-purple-600 hover:bg-purple-700 w-full"
-                                                    onClick={() => handleStakeAsset(selectedAsset)}
+                                                    onClick={() => {
+                                                        try {
+                                                            handleStakeAsset(assetToGpu(selectedAsset));
+                                                        } catch (err) {
+                                                            console.log("Failed to stake asset: Missing required component PDAs", err);
+                                                            toast.error("Failed to stake asset: Missing required component PDAs");
+                                                        }
+                                                    }}
                                                     disabled={isLoadingStaking}
                                                 >
                                                     Stake Asset

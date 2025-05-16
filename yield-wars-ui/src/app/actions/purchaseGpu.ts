@@ -50,7 +50,6 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
     const worldPda = new PublicKey(params.worldPda);
     const gpuEntityPda = new PublicKey(params.gpuEntityPda);
     const buyerEntityPda = new PublicKey(params.buyerEntityPda);
-    const sourcePricePda = new PublicKey(params.sourcePricePda);
 
     // Extract entity IDs from PDAs for use in ownership assignment
     // NOTE: The blockchain expects numeric entity IDs, not string PublicKeys

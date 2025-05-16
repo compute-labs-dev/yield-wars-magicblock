@@ -1,3 +1,5 @@
+'use client';
+
 import { PrivyLogin } from "../privy/PrivyLogin";
 import ProfileContainer from "../privy/ProfileContainer";
 import ProfileIcon from "../privy/ProfileIcon";

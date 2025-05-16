@@ -15,8 +15,7 @@ import {
   systemEconomy, 
   componentOwnership,
   systemAssignOwnership,
-  SYSTEM_PRICE_ACTION_PROGRAM_ID,
-  getComponentOwnershipOnChain 
+  SYSTEM_PRICE_ACTION_PROGRAM_ID, 
 } from '@/lib/constants/programIds';
 import { CurrencyType } from '@/lib/constants/programEnums';
 
@@ -477,7 +476,7 @@ console.log(`Wallet funded with ${STARTING_USDC_AMOUNT/1000000} USDC. Signature:
     entityPda: entityPda.toBase58(),
     walletComponentPda: walletComponentPda.toBase58(),
     ownershipComponentPda: initOwnershipCompResult.componentPda.toBase58(),
-    priceComponentPdas: priceComponents as PriceComponentPdas,
+    priceComponentPdas: priceComponents as unknown as PriceComponentPdas,
     initSignatures: signatures,
   };
 } 

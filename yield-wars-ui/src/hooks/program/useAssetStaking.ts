@@ -1,6 +1,4 @@
 import { useCallback, useState } from "react";
-import { useMagicBlockEngine } from "@/engine/MagicBlockEngineProvider";
-import { useSignAndSendTransaction } from "@/hooks/useSignAndSendTransaction";
 
 // This is a placeholder as we don't have direct access to staking system yet
 // We'll need to create a client for this system once it's available
@@ -16,25 +14,19 @@ export interface UseAssetStakingResult {
     isLoading: boolean;
     error: Error | null;
     stakeAsset: (params: {
-        worldPda: string;
         entityPda: string;
         stakeableComponentPda: string;
         walletComponentPda: string;
-        userWalletPublicKey: string;
     }) => Promise<string | undefined>;
     unstakeAsset: (params: {
-        worldPda: string;
         entityPda: string;
         stakeableComponentPda: string;
         walletComponentPda: string;
-        userWalletPublicKey: string;
     }) => Promise<string | undefined>;
     collectStakingRewards: (params: {
-        worldPda: string;
         entityPda: string;
         stakeableComponentPda: string;
         walletComponentPda: string;
-        userWalletPublicKey: string;
     }) => Promise<string | undefined>;
     calculatePenalty: (params: {
         stakingStartTime: number;
@@ -53,24 +45,21 @@ export interface UseAssetStakingResult {
 export function useAssetStaking(): UseAssetStakingResult {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const engine = useMagicBlockEngine();
-    const { signAndSend } = useSignAndSendTransaction();
+    // These will be used in the future implementation
+    // const engine = useMagicBlockEngine();
+    // const { signAndSend } = useSignAndSendTransaction();
 
     // For now, these are placeholder implementations that will need to be updated
     // once we have access to the actual staking system
 
     const stakeAsset = useCallback(async ({
-        worldPda,
         entityPda,
         stakeableComponentPda,
         walletComponentPda,
-        userWalletPublicKey
     }: {
-        worldPda: string;
         entityPda: string;
         stakeableComponentPda: string;
         walletComponentPda: string;
-        userWalletPublicKey: string;
     }): Promise<string | undefined> => {
         setIsLoading(true);
         setError(null);
@@ -95,20 +84,16 @@ export function useAssetStaking(): UseAssetStakingResult {
             setIsLoading(false);
             return undefined;
         }
-    }, [engine, signAndSend]);
+    }, []);
 
     const unstakeAsset = useCallback(async ({
-        worldPda,
         entityPda,
         stakeableComponentPda,
         walletComponentPda,
-        userWalletPublicKey
     }: {
-        worldPda: string;
         entityPda: string;
         stakeableComponentPda: string;
         walletComponentPda: string;
-        userWalletPublicKey: string;
     }): Promise<string | undefined> => {
         setIsLoading(true);
         setError(null);
@@ -133,20 +118,16 @@ export function useAssetStaking(): UseAssetStakingResult {
             setIsLoading(false);
             return undefined;
         }
-    }, [engine, signAndSend]);
+    }, []);
 
     const collectStakingRewards = useCallback(async ({
-        worldPda,
         entityPda,
         stakeableComponentPda,
         walletComponentPda,
-        userWalletPublicKey
     }: {
-        worldPda: string;
         entityPda: string;
         stakeableComponentPda: string;
         walletComponentPda: string;
-        userWalletPublicKey: string;
     }): Promise<string | undefined> => {
         setIsLoading(true);
         setError(null);
@@ -171,7 +152,7 @@ export function useAssetStaking(): UseAssetStakingResult {
             setIsLoading(false);
             return undefined;
         }
-    }, [engine, signAndSend]);
+    }, []);
 
     const calculatePenalty = useCallback(({
         stakingStartTime,

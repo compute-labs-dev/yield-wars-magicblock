@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
 import { useMagicBlockEngine } from "@/engine/MagicBlockEngineProvider";
-import { PublicKey, VersionedTransaction, TransactionMessage, MessageV0 } from "@solana/web3.js";
+import { PublicKey, VersionedTransaction, TransactionMessage } from "@solana/web3.js";
 import { useSignAndSendTransaction } from "@/hooks/useSignAndSendTransaction";
 import { getResourceProductionSystemOnChain } from "@/lib/constants/programIds";
-import { BorshCoder } from "@coral-xyz/anchor";
 
 export enum ProductionOperationType {
     INITIALIZE = 0,
@@ -16,14 +15,12 @@ export interface UseAssetProductionResult {
     isLoading: boolean;
     error: Error | null;
     collectResources: (params: {
-        worldPda: string;
         entityPda: string;
         productionComponentPda: string;
         walletComponentPda: string;
         userWalletPublicKey: string;
     }) => Promise<string | undefined>;
     toggleProduction: (params: {
-        worldPda: string;
         entityPda: string;
         productionComponentPda: string;
         setActive: boolean;
@@ -44,13 +41,11 @@ export function useAssetProduction(): UseAssetProductionResult {
     const { signAndSend } = useSignAndSendTransaction();
 
     const collectResources = useCallback(async ({
-        worldPda,
         entityPda,
         productionComponentPda,
         walletComponentPda,
         userWalletPublicKey
     }: {
-        worldPda: string;
         entityPda: string;
         productionComponentPda: string;
         walletComponentPda: string;
@@ -110,13 +105,11 @@ export function useAssetProduction(): UseAssetProductionResult {
     }, [engine, signAndSend]);
 
     const toggleProduction = useCallback(async ({
-        worldPda,
         entityPda,
         productionComponentPda,
         setActive,
         userWalletPublicKey
     }: {
-        worldPda: string;
         entityPda: string;
         productionComponentPda: string;
         setActive: boolean;

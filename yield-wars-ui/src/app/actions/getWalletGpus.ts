@@ -109,7 +109,7 @@ export async function getWalletGpus(params: GetWalletGpusParams): Promise<Owners
       const gpuRangeEnd = Number(world.entities);
       
       // Create a queue of IDs to check, prioritizing recent entities (more likely to be GPUs)
-      let idsToCheck = [];
+      const idsToCheck = [];
       
       // Add the most recent entities first (higher priority)
       for (let i = gpuRangeEnd; i > gpuRangeStart; i--) {
@@ -195,6 +195,7 @@ export async function getWalletGpus(params: GetWalletGpusParams): Promise<Owners
             }
           }
         } catch (err) {
+          console.error("Error fetching ownership component:", err);
           // Skip individual entities that have errors
           continue;
         }

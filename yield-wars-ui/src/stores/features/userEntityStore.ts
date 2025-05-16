@@ -4,9 +4,13 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { CurrencyType } from '@/lib/constants/programEnums';
 
 // Define types
-export type PriceComponentPdas = {
-  [key in CurrencyType]: string;
-};
+export interface PriceComponentPdas {
+  [CurrencyType.USDC]: string;
+  [CurrencyType.BTC]: string;
+  [CurrencyType.ETH]: string;
+  [CurrencyType.SOL]: string;
+  [CurrencyType.AIFI]: string;
+}
 
 // Helper type for currency type keys
 export type CurrencyTypeKey = keyof PriceComponentPdas;

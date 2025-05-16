@@ -78,17 +78,28 @@ export function useInitializeNewWorld(): UseInitializeWorldResult {
                     
                     return {
                         ...gpu,
-                        type
+                        type,
+                        walletComponentPda: ""
                     };
                 });
                 
                 dispatch(setGpuEntities(gpuEntitiesWithTypes));
                 console.log(`Stored ${gpuEntitiesWithTypes.length} GPU entities in Redux store`);
+
+                setData({
+                    worldPda: result.worldPda,
+                    currencyEntities: result.currencyEntities,
+                    gpuEntities: gpuEntitiesWithTypes
+                });
+            } else {
+                setData({
+                    worldPda: result.worldPda,
+                    currencyEntities: result.currencyEntities,
+                    gpuEntities: []
+                });
             }
             
             dispatch(setInitialized(true));
-            
-            setData(result);
             toast.success('World initialized successfully! Constants have been logged to the console - copy them to src/lib/consts.ts to avoid reinitializing in the future.');
             
         } catch (err) {

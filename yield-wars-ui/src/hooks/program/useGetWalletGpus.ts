@@ -58,7 +58,7 @@ export function useGetWalletGpus(): UseGetWalletGpusResult {
       }
 
       // Decode the account data
-      let decodedGpus: GpuOwnership[] = [];
+      const decodedGpus: GpuOwnership[] = [];
       
       // Safely decode the ownership data with proper error handling
       let ownership;

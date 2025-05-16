@@ -1,6 +1,6 @@
 'use server';
 
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { 
     InitializeNewWorld, 
     AddEntity, 
@@ -132,7 +132,7 @@ const GPU_TYPES: GpuTypeProperties[] = [
 
 async function sendAndConfirmTransaction(
     connection: Connection, 
-    transaction: any, 
+    transaction: Transaction, 
     signer: Keypair,
     operationName: string,
     skipConfirmation: boolean = true // Default to skipping confirmation for faster development
@@ -204,7 +204,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
         });
         
         // Use the helper function for sending and confirming
-        const worldTxSign = await sendAndConfirmTransaction(
+        await sendAndConfirmTransaction(
             connection,
             initNewWorld.transaction,
             adminKeypair,
@@ -234,9 +234,10 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 
                 console.log(`Successfully fetched world data (entities: ${world.entities.toString()})`);
                 break; // Success, exit the loop
-            } catch (error: any) {
+            } catch (error: unknown) {
                 retryCount++;
-                console.log(`Attempt ${retryCount}/${maxRetries} to fetch world failed: ${error.message}`);
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                console.log(`Attempt ${retryCount}/${maxRetries} to fetch world failed: ${errorMessage}`);
                 
                 if (retryCount === maxRetries) {
                     console.log("Max retries reached. Will try to continue without verified world data.");
@@ -258,7 +259,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
             connection: connection,
         });
 
-        const adminEntityTx = await sendAndConfirmTransaction(
+        await sendAndConfirmTransaction(
             connection,
             addAdminEntity.transaction,
             adminKeypair,
@@ -275,7 +276,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
             componentId: new PublicKey(componentOwnership.address),
         });
 
-        const adminOwnershipTx = await sendAndConfirmTransaction(
+        await sendAndConfirmTransaction(
             connection,
             initAdminOwnership.transaction,
             adminKeypair,
@@ -308,7 +309,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
             args: initAdminOwnershipArgs
         });
 
-        const adminOwnershipInitTx = await sendAndConfirmTransaction(
+        await sendAndConfirmTransaction(
             connection,
             initAdminOwnershipSystem.transaction,
             adminKeypair,
@@ -329,7 +330,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                     connection: connection,
                 });
                 
-                const entityTx = await sendAndConfirmTransaction(
+                await sendAndConfirmTransaction(
                     connection,
                     addEntity.transaction,
                     adminKeypair,
@@ -345,7 +346,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                     componentId: new PublicKey(componentPrice.address),
                 });
                 
-                const priceTx = await sendAndConfirmTransaction(
+                await sendAndConfirmTransaction(
                     connection,
                     initPrice.transaction,
                     adminKeypair,
@@ -384,7 +385,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                     }
                 });
 
-                const priceSystemTx = await sendAndConfirmTransaction(
+                await sendAndConfirmTransaction(
                     connection,
                     initPriceSystem.transaction,
                     adminKeypair,
@@ -411,7 +412,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                     }
                 });
 
-                const enableTx = await sendAndConfirmTransaction(
+                await sendAndConfirmTransaction(
                     connection,
                     enablePrice.transaction,
                     adminKeypair,
@@ -441,7 +442,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 connection: connection,
             });
             
-            const gpuEntityTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 addGpuEntity.transaction,
                 adminKeypair,
@@ -457,7 +458,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 componentId: new PublicKey(componentOwnership.address),
             });
             
-            const ownershipTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initOwnership.transaction,
                 adminKeypair,
@@ -490,7 +491,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 args: initOwnershipArgs
             });
             
-            const ownershipInitTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initOwnershipSystem.transaction,
                 adminKeypair,
@@ -527,7 +528,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 args: assignOwnershipArgs
             });
             
-            const ownershipAssignTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 assignOwnershipSystem.transaction,
                 adminKeypair,
@@ -543,7 +544,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 componentId: new PublicKey(componentProduction.address),
             });
             
-            const productionTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initProduction.transaction,
                 adminKeypair,
@@ -559,7 +560,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 componentId: new PublicKey(componentWallet.address),
             });
             
-            const walletTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initWallet.transaction,
                 adminKeypair,
@@ -593,7 +594,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 }
             });
             
-            const productionSystemTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initProductionSystem.transaction,
                 adminKeypair,
@@ -609,7 +610,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 componentId: new PublicKey(componentUpgradeable.address),
             });
             
-            const upgradeableTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initUpgradeable.transaction,
                 adminKeypair,
@@ -646,7 +647,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                     }
                 });
                 
-                const upgradeSystemTx = await sendAndConfirmTransaction(
+                await sendAndConfirmTransaction(
                     connection,
                     initUpgradeSystem.transaction,
                     adminKeypair,
@@ -666,7 +667,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                 componentId: new PublicKey(componentStakeable.address),
             });
             
-            const stakeableTx = await sendAndConfirmTransaction(
+            await sendAndConfirmTransaction(
                 connection,
                 initStakeable.transaction,
                 adminKeypair,
@@ -704,7 +705,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
                     }
                 });
                 
-                const stakeableSystemTx = await sendAndConfirmTransaction(
+                await sendAndConfirmTransaction(
                     connection,
                     initStakeableSystem.transaction,
                     adminKeypair,

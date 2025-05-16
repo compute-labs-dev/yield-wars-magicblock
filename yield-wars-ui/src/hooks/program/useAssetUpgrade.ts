@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useMagicBlockEngine } from "@/engine/MagicBlockEngineProvider";
-import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey, VersionedTransaction, TransactionMessage } from "@solana/web3.js";
 import { useSignAndSendTransaction } from "@/hooks/useSignAndSendTransaction";
 import { getUpgradeSystemOnChain } from "@/lib/constants/programIds";
 
@@ -45,14 +45,12 @@ export function useAssetUpgrade(): UseAssetUpgradeResult {
     const { signAndSend } = useSignAndSendTransaction();
 
     const upgradeAsset = useCallback(async ({
-        worldPda,
         entityPda,
         upgradeableComponentPda,
         walletComponentPda,
         productionComponentPda,
         userWalletPublicKey
     }: {
-        worldPda: string;
         entityPda: string;
         upgradeableComponentPda: string;
         walletComponentPda: string;
@@ -71,17 +69,19 @@ export function useAssetUpgrade(): UseAssetUpgradeResult {
             console.log("Production component:", productionComponentPda);
             
             // Generate an upgrade transaction
+            const args = {
+                operation_type: UpgradeOperationType.UPGRADE,
+                current_level: 0, // Not relevant for upgrading, read from component
+                max_level: 0, // Not relevant for upgrading, read from component
+                next_upgrade_usdc_cost: BigInt(0), // Not relevant for upgrading, read from component
+                next_upgrade_aifi_cost: BigInt(0), // Not relevant for upgrading, read from component
+                upgrade_cooldown: 0, // Not relevant for upgrading, read from component
+                next_usdc_boost: 0, // Not relevant for upgrading, read from component
+                next_aifi_boost: 0 // Not relevant for upgrading, read from component
+            };
+
             const upgradeTx = await upgradeSystem.methods
-                .execute({
-                    operation_type: UpgradeOperationType.UPGRADE,
-                    current_level: 0, // Not relevant for upgrading, read from component
-                    max_level: 0, // Not relevant for upgrading, read from component
-                    next_upgrade_usdc_cost: 0n, // Not relevant for upgrading, read from component
-                    next_upgrade_aifi_cost: 0n, // Not relevant for upgrading, read from component
-                    upgrade_cooldown: 0, // Not relevant for upgrading, read from component
-                    next_usdc_boost: 0, // Not relevant for upgrading, read from component
-                    next_aifi_boost: 0 // Not relevant for upgrading, read from component
-                })
+                .execute(Buffer.from(JSON.stringify(args)))
                 .accounts({
                     upgradeable: new PublicKey(upgradeableComponentPda),
                     wallet: new PublicKey(walletComponentPda),
@@ -90,8 +90,17 @@ export function useAssetUpgrade(): UseAssetUpgradeResult {
                 })
                 .instruction();
                 
-            // Create a transaction with this instruction
-            const tx = new VersionedTransaction(upgradeTx);
+            // Get latest blockhash
+            const { blockhash } = await engine.getConnectionChain().getLatestBlockhash("confirmed");
+            
+            // Create a versioned transaction
+            const messageV0 = new TransactionMessage({
+                payerKey: new PublicKey(userWalletPublicKey),
+                recentBlockhash: blockhash,
+                instructions: [upgradeTx]
+            }).compileToV0Message();
+            
+            const tx = new VersionedTransaction(messageV0);
                 
             // Sign and send the transaction
             const signature = await signAndSend(tx);

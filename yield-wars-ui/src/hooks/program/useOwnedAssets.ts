@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMagicBlockEngine } from "@/engine/MagicBlockEngineProvider";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { FindComponentPda, FindEntityPda, EntityPda } from "@magicblock-labs/bolt-sdk";
+import { FindComponentPda } from "@magicblock-labs/bolt-sdk";
 import { 
     componentOwnership, 
     getComponentOwnershipOnChain,
@@ -100,7 +100,7 @@ export function useOwnedAssets(): UseOwnedAssetsResult {
             console.log(`Found ${worldData.length} entities in total`);
             
             // For each entity check if it's owned by the user
-            for (const { pubkey, account } of worldData) {
+            for (const { pubkey } of worldData) {
                 try {
                     // Find ownership component for this entity
                     const ownershipPda = FindComponentPda({
@@ -117,7 +117,7 @@ export function useOwnedAssets(): UseOwnedAssetsResult {
                     // Check if the user owns this entity
                     const isEntityOwnedByUser = 
                         (ownership.owner_entity && ownership.owner_entity.toBase58() === userPublicKey) || 
-                        (ownership.owned_entities && ownership.owned_entities.some(e => e.toBase58() === userPublicKey));
+                        (ownership.owned_entities && ownership.owned_entities.some((e: PublicKey) => e.toBase58() === userPublicKey));
 
                     // Only collect productive assets like GPUs
                     if (isEntityOwnedByUser && 
@@ -240,7 +240,6 @@ export function useOwnedAssets(): UseOwnedAssetsResult {
     const refreshAssetDetails = useCallback(async (entityPda: string): Promise<AssetDetails | undefined> => {
         try {
             const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
-            const entity = new PublicKey(entityPda);
             
             // Find existing asset in the list
             const existingAssetIndex = ownedAssets.findIndex(asset => asset.entityPda === entityPda);
