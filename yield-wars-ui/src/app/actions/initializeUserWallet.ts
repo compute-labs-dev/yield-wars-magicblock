@@ -1,6 +1,6 @@
 'use server';
 
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import {
   AddEntity,
@@ -21,7 +21,9 @@ import { CurrencyType } from '@/lib/constants/programEnums';
 
 
 // --- Constants (should be moved to a config or .env file) ---
-const RPC_ENDPOINT = process.env.RPC_ENDPOINT || 'https://api.devnet.solana.com';
+const RPC_ENDPOINT = process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com';
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 // const RPC_ENDPOINT = 'https://devnet.magicblock.app'
 const ADMIN_PRIVATE_KEY_BS58 = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
 
@@ -129,12 +131,13 @@ async function initializePriceComponent(
         throw new Error(`PDA mismatch for ${CurrencyType[currencyType]}: expected ${priceComponentPda.toBase58()} but got ${initPriceCompResult.componentPda.toBase58()}`);
     }
 
-    // Sign and send
-    initPriceCompResult.transaction.feePayer = adminKeypair.publicKey;
-    initPriceCompResult.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    initPriceCompResult.transaction.sign(adminKeypair);
-    const initSig = await connection.sendRawTransaction(initPriceCompResult.transaction.serialize());
-    await connection.confirmTransaction(initSig);
+    // Sign and send with retry
+    const initSig = await sendAndConfirmWithRetry(
+        connection,
+        initPriceCompResult.transaction,
+        adminKeypair,
+        `Initialize ${CurrencyType[currencyType]} price component`
+    );
     console.log(`Price component account created for ${CurrencyType[currencyType]}: ${initPriceCompResult.componentPda.toBase58()}`);
 
     // 3. Initialize price data
@@ -161,11 +164,12 @@ async function initializePriceComponent(
         args: initPriceArgs,
     });
 
-    initPriceSystem.transaction.feePayer = adminKeypair.publicKey;
-    initPriceSystem.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    initPriceSystem.transaction.sign(adminKeypair);
-    const initDataSig = await connection.sendRawTransaction(initPriceSystem.transaction.serialize());
-    await connection.confirmTransaction(initDataSig);
+    const initDataSig = await sendAndConfirmWithRetry(
+        connection,
+        initPriceSystem.transaction,
+        adminKeypair,
+        `Initialize ${CurrencyType[currencyType]} price data`
+    );
     console.log(`Price data initialized for ${CurrencyType[currencyType]}`);
 
     // 4. Enable price updates
@@ -192,11 +196,12 @@ async function initializePriceComponent(
         args: enablePriceArgs,
     });
 
-    enablePriceSystem.transaction.feePayer = adminKeypair.publicKey;
-    enablePriceSystem.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    enablePriceSystem.transaction.sign(adminKeypair);
-    const enableSig = await connection.sendRawTransaction(enablePriceSystem.transaction.serialize());
-    await connection.confirmTransaction(enableSig);
+    const enableSig = await sendAndConfirmWithRetry(
+        connection,
+        enablePriceSystem.transaction,
+        adminKeypair,
+        `Enable ${CurrencyType[currencyType]} price updates`
+    );
     console.log(`Price updates enabled for ${CurrencyType[currencyType]}`);
 
     // Verify the component was initialized correctly
@@ -291,6 +296,33 @@ async function updateOwnershipComponent(
     return [initEntitySig, assignSig];
 }
 
+async function sendAndConfirmWithRetry(
+  connection: Connection,
+  transaction: Transaction,
+  signer: Keypair,
+  operation: string
+): Promise<string> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      transaction.feePayer = signer.publicKey;
+      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.sign(signer);
+      const signature = await connection.sendRawTransaction(transaction.serialize());
+      await connection.confirmTransaction(signature);
+      console.log(`${operation} succeeded on attempt ${attempt + 1}. Signature: ${signature}`);
+      return signature;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`${operation} failed on attempt ${attempt + 1}:`, error);
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      }
+    }
+  }
+  throw new Error(`${operation} failed after ${MAX_RETRIES} attempts. Last error: ${lastError?.message}`);
+}
+
 export async function initializeUserWalletServer(
   params: InitializeUserWalletParams
 ): Promise<InitializeUserWalletResult> {
@@ -298,8 +330,10 @@ export async function initializeUserWalletServer(
     throw new Error('Admin private key (FE_CL_BS58_SIGNER_PRIVATE_KEY) not configured in environment variables.');
   }
   if (!RPC_ENDPOINT) {
-    throw new Error('RPC_ENDPOINT not configured.');
+    throw new Error('NEXT_PUBLIC_RPC_ENDPOINT not configured.');
   }
+
+  console.log('Initializing with RPC endpoint:', RPC_ENDPOINT);
 
   const WALLET_COMPONENT_PROGRAM_ID = componentWallet.address;
   const PRICE_COMPONENT_PROGRAM_ID = componentPrice.address;
@@ -319,11 +353,12 @@ export async function initializeUserWalletServer(
     world: worldPublicKey,
     connection: connection,
   });
-  addEntityResult.transaction.feePayer = adminKeypair.publicKey; // Ensure fee payer is set
-  addEntityResult.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  addEntityResult.transaction.sign(adminKeypair); // Payer signs
-  const addEntitySig = await connection.sendRawTransaction(addEntityResult.transaction.serialize());
-  await connection.confirmTransaction(addEntitySig);
+  const addEntitySig = await sendAndConfirmWithRetry(
+    connection,
+    addEntityResult.transaction,
+    adminKeypair,
+    'Add entity'
+  );
   signatures.push(addEntitySig);
   console.log(`Entity added: ${addEntityResult.entityPda.toBase58()}, Signature: ${addEntitySig}`);
   const entityPda = addEntityResult.entityPda;
@@ -335,11 +370,12 @@ export async function initializeUserWalletServer(
     entity: entityPda,
     componentId: new PublicKey(OWNERSHIP_COMPONENT_PROGRAM_ID),
   });
-  initOwnershipCompResult.transaction.feePayer = adminKeypair.publicKey;
-  initOwnershipCompResult.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  initOwnershipCompResult.transaction.sign(adminKeypair);
-  const initOwnershipSig = await connection.sendRawTransaction(initOwnershipCompResult.transaction.serialize());
-  await connection.confirmTransaction(initOwnershipSig);
+  const initOwnershipSig = await sendAndConfirmWithRetry(
+    connection,
+    initOwnershipCompResult.transaction,
+    adminKeypair,
+    'Initialize ownership component'
+  );
   signatures.push(initOwnershipSig);
   console.log(`Ownership component initialized: ${initOwnershipCompResult.componentPda.toBase58()}, Signature: ${initOwnershipSig}`);
 
@@ -361,11 +397,12 @@ export async function initializeUserWalletServer(
     entity: entityPda,
     componentId: new PublicKey(WALLET_COMPONENT_PROGRAM_ID),
   });
-  initWalletCompResult.transaction.feePayer = adminKeypair.publicKey;
-  initWalletCompResult.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  initWalletCompResult.transaction.sign(adminKeypair);
-  const initWalletSig = await connection.sendRawTransaction(initWalletCompResult.transaction.serialize());
-  await connection.confirmTransaction(initWalletSig);
+  const initWalletSig = await sendAndConfirmWithRetry(
+    connection,
+    initWalletCompResult.transaction,
+    adminKeypair,
+    'Initialize wallet component'
+  );
   signatures.push(initWalletSig);
   console.log(`Wallet component initialized: ${initWalletCompResult.componentPda.toBase58()}, Signature: ${initWalletSig}`);
   const walletComponentPda = initWalletCompResult.componentPda;
@@ -465,11 +502,12 @@ console.log("Funding transaction created with args:", {
     amount: STARTING_USDC_AMOUNT
 });
 
-fundWalletTxDetails.transaction.feePayer = adminKeypair.publicKey;
-fundWalletTxDetails.transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-fundWalletTxDetails.transaction.sign(adminKeypair);
-const fundWalletSig = await connection.sendRawTransaction(fundWalletTxDetails.transaction.serialize());
-await connection.confirmTransaction(fundWalletSig);
+const fundWalletSig = await sendAndConfirmWithRetry(
+    connection,
+    fundWalletTxDetails.transaction,
+    adminKeypair,
+    'Fund wallet with initial USDC'
+);
 console.log(`Wallet funded with ${STARTING_USDC_AMOUNT/1000000} USDC. Signature: ${fundWalletSig}`);
 
   return {

@@ -15,10 +15,15 @@ import {
     setCurrencyEntity,
     setGpuEntities,
     setInitialized,
-    GpuEntityDetails
+    GpuEntityDetails,
+    selectWorldPda
 } from "@/stores/features/worldStore";
+import { selectUserEntity } from "@/stores/features/userEntityStore";
+import { useInitializeUserWallet } from "@/hooks/program/useInitializeUserWallet";
+import { Button } from "@/components/ui/Button";
 import * as constants from '@/lib/consts';
 import { toast } from "sonner";
+import type { RootState } from "@/stores/store";
 
 // Create a separate client component for the content
 function SupplyShackContent() {
@@ -48,6 +53,54 @@ function SupplyShackContent() {
 
     const dispatch = useDispatch();
     const isWorldInitialized = useSelector(selectIsWorldInitialized);
+    const worldPda = useSelector(selectWorldPda);
+    
+    // Get the user entity from Redux if it exists
+    const userEntity = useSelector((state: RootState) => 
+        user?.wallet?.address ? selectUserEntity(state, user.wallet.address) : null
+    );
+
+    // Initialize wallet hooks
+    const { 
+        initializeWalletAsync,
+        isLoading: isLoadingInitWallet
+    } = useInitializeUserWallet();
+
+    // Handle wallet initialization
+    const handleInitializeWallet = async () => {
+        if (!user?.wallet?.address) {
+            toast.error("User wallet not connected.");
+            return;
+        }
+        if (!worldPda) {
+            toast.error("World not initialized.");
+            return;
+        }
+        try {
+            console.log("Starting wallet initialization with params:", {
+                userPublicKey: user.wallet.address,
+                worldPda
+            });
+            
+            const result = await initializeWalletAsync({ 
+                userPublicKey: user.wallet.address, 
+                worldPda 
+            });
+            
+            if (result) {
+                console.log("Wallet initialization completed:", {
+                    entityPda: result.entityPda,
+                    walletComponentPda: result.walletComponentPda,
+                    priceComponentPdas: result.priceComponentPdas
+                });
+                
+                toast.success(`Entity initialized: ${result.entityPda}`);
+            }
+        } catch (error) { 
+            console.error("Init wallet failed:", error);
+            toast.error(`Init wallet failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
 
     // Load world data from constants
     const loadWorldFromConstants = useCallback(() => {
@@ -145,17 +198,40 @@ function SupplyShackContent() {
             <SupplyShackHeader />
             <SupplyShackTabs activeTab={activeTab} onTabChange={handleTabChange} />
             
+            {/* Add wallet initialization button if needed */}
+            {user && isWorldInitialized && !userEntity && (
+                <div className="w-full max-w-md mx-auto p-4 mb-6 border rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold mb-3 text-center text-white">Initialize Game Wallet</h2>
+                    <Button 
+                        className="w-full bg-blue-500 hover:bg-blue-600" 
+                        onClick={handleInitializeWallet} 
+                        disabled={isLoadingInitWallet || !user?.wallet?.address}
+                    >
+                        {isLoadingInitWallet ? "Initializing..." : "Initialize Wallet"}
+                    </Button>
+                </div>
+            )}
+            
             <div className="mt-6">
-                <div style={{ display: activeTab === "store" ? "block" : "none" }}>
-                    <Suspense fallback={<div>Loading store...</div>}>
-                        <SupplyShackStore user={user} />
-                    </Suspense>
-                </div>
-                <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
-                    <Suspense fallback={<div>Loading inventory...</div>}>
-                        <SupplyShackInventory user={user} />
-                    </Suspense>
-                </div>
+                {/* Only show content if user has initialized their wallet */}
+                {userEntity ? (
+                    <>
+                        <div style={{ display: activeTab === "store" ? "block" : "none" }}>
+                            <Suspense fallback={<div>Loading store...</div>}>
+                                <SupplyShackStore user={user} />
+                            </Suspense>
+                        </div>
+                        <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
+                            <Suspense fallback={<div>Loading inventory...</div>}>
+                                <SupplyShackInventory user={user} />
+                            </Suspense>
+                        </div>
+                    </>
+                ) : (
+                    <div className="text-center text-gray-400 py-8">
+                        Please initialize your wallet to access the Supply Shack
+                    </div>
+                )}
             </div>
         </div>
     );

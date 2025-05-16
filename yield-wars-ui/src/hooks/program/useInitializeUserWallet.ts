@@ -2,7 +2,6 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { initializeUserWalletServer } from '@/app/actions/initializeUserWallet';
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { setUserEntity } from '@/stores/features/userEntityStore';
@@ -22,6 +21,42 @@ interface InitializeWalletResult {
   initSignatures: string[];
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
+async function initializeWalletWithRetry(params: InitializeWalletParams): Promise<InitializeWalletResult> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch('/api/wallet/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Failed to initialize wallet');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`Attempt ${attempt + 1} failed:`, error);
+      lastError = error as Error;
+      
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      }
+    }
+  }
+
+  throw new Error(`Failed after ${MAX_RETRIES} attempts. Last error: ${lastError?.message}`);
+}
+
 export function useInitializeUserWallet() {
   const [isClient, setIsClient] = useState(false);
   
@@ -33,76 +68,8 @@ export function useInitializeUserWallet() {
   const dispatch = useDispatch();
 
   const mutation = useMutation({
-    mutationFn: async (params: InitializeWalletParams): Promise<InitializeWalletResult> => {
-      const serverResult = await initializeUserWalletServer(params);
-      
-      console.log("Server returned price component PDAs:", serverResult.priceComponentPdas);
-      
-      // Transform the price component PDAs to match the expected format
-      const transformedPdas = {} as PriceComponentPdas;
-      
-      // Define the required currency types
-      const requiredCurrencyTypes = [
-        CurrencyType.USDC,
-        CurrencyType.BTC,
-        CurrencyType.ETH,
-        CurrencyType.SOL,
-        CurrencyType.AIFI
-      ] as const;
-      
-      // Map each currency type to its PDA
-      for (const type of requiredCurrencyTypes) {
-        //@ts-expect-error - this is a workaround to fix the type error
-        const pda = serverResult.priceComponentPdas[type as keyof PriceComponentPdas]; 
-        if (!pda) {
-          console.error(`Missing PDA for currency type ${CurrencyType[type]} (${type})`);
-          continue;
-        }
-        
-        // Verify the PDA format
-        if (typeof pda !== 'string' || !pda.match(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)) {
-          console.error(`Invalid PDA format for currency ${CurrencyType[type]}: ${pda}`);
-          continue;
-        }
-        
-        // Safe assignment since we've verified the type
-        transformedPdas[type] = pda;
-      }
-      
-      // Check for missing PDAs
-      const missingTypes = requiredCurrencyTypes.filter(type => !(type in transformedPdas));
-      if (missingTypes.length > 0) {
-        const error = `Missing price component PDAs for currencies: ${missingTypes.map(type => CurrencyType[type]).join(', ')}`;
-        console.error(error);
-        throw new Error(error);
-      }
-      
-      // Log the transformed PDAs for debugging
-      console.log('Transformed price component PDAs:', {
-        original: serverResult.priceComponentPdas,
-        transformed: transformedPdas,
-        mapping: Object.entries(transformedPdas).reduce((acc, [key, value]) => ({
-          ...acc,
-          [CurrencyType[Number(key)]]: value
-        }), {} as Record<string, string>)
-      });
-      
-      if (isClient) {
-        dispatch(setUserEntity({
-          walletAddress: params.userPublicKey,
-          entityPda: serverResult.entityPda,
-          walletComponentPda: serverResult.walletComponentPda,
-          ownershipComponentPda: serverResult.ownershipComponentPda,
-          priceComponentPdas: transformedPdas
-        }));
-      }
-      
-      return {
-        ...serverResult,
-        priceComponentPdas: transformedPdas
-      };
-    },
-    onSuccess: (data) => {
+    mutationFn: initializeWalletWithRetry,
+    onSuccess: (data, variables) => {
       toast.success('Wallet initialized successfully!');
       console.log('Wallet initialized with data:', {
         entityPda: data.entityPda,
@@ -120,6 +87,17 @@ export function useInitializeUserWallet() {
       Object.entries(data.priceComponentPdas).forEach(([, pda]) => {
         queryClient.invalidateQueries({ queryKey: ['priceComponent', pda] });
       });
+
+      // Update Redux store with the new entity
+      if (data.entityPda) {
+        dispatch(setUserEntity({
+          walletAddress: variables.userPublicKey,
+          entityPda: data.entityPda,
+          walletComponentPda: data.walletComponentPda,
+          ownershipComponentPda: data.ownershipComponentPda,
+          priceComponentPdas: data.priceComponentPdas
+        }));
+      }
     },
     onError: (error: Error) => {
       toast.error(`Wallet initialization failed: ${error.message}`);
