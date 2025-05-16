@@ -19,7 +19,6 @@ import {
 // Import necessary functions from actions
 import { fetchWalletBalance } from '@/app/actions/fetchWalletBalance';
 import { getWalletGpus } from '@/app/actions/getWalletGpus';
-// Removed: import { exchangeCurrency } from '@/app/actions/exchangeCurrency';
 import { purchaseGpu } from '@/app/actions/purchaseGpu';
 import { CurrencyType } from '@/lib/constants/programEnums';
 import * as constants from '@/lib/consts';
@@ -788,16 +787,17 @@ registerCommand({
                 destination_currency_type: currencyTypeMap[destination],
                 amount: rawAmount,
                 userWalletPublicKey: context.user.wallet.address,
+                privySigner: context.user.wallet.address,
                 sourcePricePda,
                 destinationPricePda,
                 sourceCurrencyEntityPda: sourceCurrencyEntity.entityPda,
                 destinationCurrencyEntityPda: destinationCurrencyEntity.entityPda
             };
             
-            // Execute the exchange via API route instead of directly calling the server action
+            // Execute the exchange using the API endpoint instead of server action
             let response = `Processing exchange...\n\n`;
             
-            // Call the API endpoint using fetch
+
             const apiResponse = await fetch('/api/exchange', {
                 method: 'POST',
                 headers: {
@@ -806,13 +806,13 @@ registerCommand({
                 body: JSON.stringify(exchangeParams),
             });
             
-            const result = await apiResponse.json();
+            const data = await apiResponse.json();
             
-            if (!result.success) {
-                throw new Error(result.error || 'Exchange failed');
+            if (!apiResponse.ok) {
+                throw new Error(data.error || 'Failed to exchange currency');
             }
             
-            const signature = result.signature;
+            const signature = data.signature;
             
             response += `Exchange completed successfully!\n`;
             response += `Transaction signature: ${signature.slice(0, 8)}...\n\n`;

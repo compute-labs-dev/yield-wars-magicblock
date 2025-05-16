@@ -2,10 +2,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { VersionedTransaction, Connection } from '@solana/web3.js';
 import { useSolanaWallets } from '@privy-io/react-auth/solana';
-import { exchangeCurrency, ExchangeCurrencyParams } from '@/app/actions/exchangeCurrency';
 import { useSignAndSendTransaction } from '../useSignAndSendTransaction';
+import { ExchangeCurrencyParams } from '@/app/api/exchange/route';
 
 export const useExchangeCurrency = () => {
   const queryClient = useQueryClient();
@@ -22,8 +21,22 @@ export const useExchangeCurrency = () => {
       try {
         console.log("Exchange params:", params);
         
-        // Get the transaction signature from the server
-        const signature = await exchangeCurrency(params);
+        // Call our API endpoint instead of the server action
+        const response = await fetch('/api/exchange', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to exchange currency');
+        }
+        
+        const signature = data.signature;
         
         // Show success toast with link to explorer
         toast.success('Exchange completed successfully!', {
