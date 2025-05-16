@@ -7,7 +7,9 @@ import {
   InitializeComponent,
   ApplySystem,
   FindComponentPda,
+  Provider as BoltProvider,
 } from '@magicblock-labs/bolt-sdk';
+import { AnchorProvider, setProvider } from "@coral-xyz/anchor";
 
 import { 
   componentWallet, 
@@ -323,36 +325,77 @@ async function sendAndConfirmWithRetry(
   throw new Error(`${operation} failed after ${MAX_RETRIES} attempts. Last error: ${lastError?.message}`);
 }
 
+// Add this function to create a keypair from base58 string
+function createKeypairFromBase58(base58PrivateKey: string): Keypair {
+  const decodedKey = bs58.decode(base58PrivateKey);
+  return Keypair.fromSecretKey(decodedKey);
+}
+
+// Add this function to create a provider
+function createAnchorProvider(connection: Connection, keypair: Keypair): AnchorProvider {
+  const wallet = {
+    publicKey: keypair.publicKey,
+    signTransaction: async (tx: any) => {
+      tx.sign(keypair);
+      return tx;
+    },
+    signAllTransactions: async (txs: any[]) => {
+      return txs.map(tx => {
+        tx.sign(keypair);
+        return tx;
+      });
+    },
+  };
+
+  return new AnchorProvider(connection, wallet, {
+    commitment: 'confirmed',
+    preflightCommitment: 'confirmed',
+  });
+}
+
 export async function initializeUserWalletServer(
   params: InitializeUserWalletParams
 ): Promise<InitializeUserWalletResult> {
   let adminKeypair: Keypair;
 
   try {
-    if (!ADMIN_PRIVATE_KEY_BS58) {
-      throw new Error('Admin private key (FE_CL_BS58_SIGNER_PRIVATE_KEY) not configured in environment variables.');
+    console.log('Starting wallet initialization in environment:', process.env.VERCEL_ENV || 'local');
+    
+    const base58PrivateKey = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
+    if (!base58PrivateKey) {
+      throw new Error('ADMIN_PRIVATE_KEY_BS58 not configured in environment variables.');
     }
 
-    // Try to decode the BS58 private key directly
-    try {
-      adminKeypair = Keypair.fromSecretKey(bs58.decode(ADMIN_PRIVATE_KEY_BS58));
-    } catch (error) {
-      console.error('Failed to decode BS58 private key:', error);
-      throw new Error('Invalid admin private key format. Must be BS58 encoded.');
-    }
+    adminKeypair = createKeypairFromBase58(base58PrivateKey);
+    const connection = new Connection(RPC_ENDPOINT, 'confirmed');
+    
+    // Create and set the provider
+    const provider = createAnchorProvider(connection, adminKeypair);
+    setProvider(provider);
 
-    if (!RPC_ENDPOINT) {
-      throw new Error('NEXT_PUBLIC_RPC_ENDPOINT not configured.');
+    // Verify provider setup
+    const currentProvider = provider;
+    if (!currentProvider) {
+      throw new Error('Provider not properly initialized');
     }
+    
+    console.log('Provider successfully initialized with wallet:', currentProvider.wallet.publicKey.toBase58());
+    console.log('RPC endpoint:', RPC_ENDPOINT);
+    console.log('Admin public key:', adminKeypair.publicKey.toBase58());
 
-    console.log('Initializing with RPC endpoint:', RPC_ENDPOINT);
+    // Add verification that the wallet has SOL
+    const balance = await connection.getBalance(adminKeypair.publicKey);
+    console.log('Admin wallet balance:', balance / 1e9, 'SOL');
+    
+    if (balance === 0) {
+      throw new Error('Admin wallet has no SOL balance');
+    }
 
     const WALLET_COMPONENT_PROGRAM_ID = componentWallet.address;
     const PRICE_COMPONENT_PROGRAM_ID = componentPrice.address;
     const ECONOMY_SYSTEM_PROGRAM_ID = systemEconomy.address;
     const OWNERSHIP_COMPONENT_PROGRAM_ID = componentOwnership.address;
 
-    const connection = new Connection(RPC_ENDPOINT, 'confirmed');
     const userWalletPublicKey = new PublicKey(params.userPublicKey);
     const worldPublicKey = new PublicKey(params.worldPda);
     const signatures: string[] = [];
@@ -529,7 +572,12 @@ export async function initializeUserWalletServer(
       initSignatures: signatures,
     };
   } catch (error) {
-    console.error("Error initializing user wallet:", error);
+    console.error('Wallet initialization failed:', {
+      error,
+      environment: process.env.VERCEL_ENV || 'local',
+      rpcEndpoint: RPC_ENDPOINT,
+      isProduction: process.env.NODE_ENV === 'production'
+    });
     throw error;
   }
 } 

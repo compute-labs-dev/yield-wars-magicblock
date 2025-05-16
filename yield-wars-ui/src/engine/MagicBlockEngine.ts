@@ -11,14 +11,15 @@ import {
 } from "@solana/web3.js";
 import { WalletName } from "@solana/wallet-adapter-base";
 
-const ENDPOINT_CHAIN_RPC = "https://api.devnet.solana.com";
-const ENDPOINT_CHAIN_WS = "wss://api.devnet.solana.com";
+// Use environment variables with fallbacks
+const ENDPOINT_CHAIN_RPC = process.env.NEXT_PUBLIC_CHAIN_RPC_URL || "https://api.devnet.solana.com";
+const ENDPOINT_CHAIN_WS = process.env.NEXT_PUBLIC_CHAIN_WS_URL || "wss://api.devnet.solana.com";
 
 const _ENDPOINT_CHAIN_RPC = "http://127.0.0.1:7899";
 const _ENDPOINT_CHAIN_WS = "ws://127.0.0.1:7900";
 
-const ENDPOINT_EPHEM_RPC = "https://devnet.magicblock.app";
-const ENDPOINT_EPHEM_WS = "wss://devnet.magicblock.app:8900";
+const ENDPOINT_EPHEM_RPC = process.env.NEXT_PUBLIC_EPHEM_RPC_URL || "https://devnet.magicblock.app";
+const ENDPOINT_EPHEM_WS = process.env.NEXT_PUBLIC_EPHEM_WS_URL || "wss://devnet.magicblock.app:8900";
 
 const _ENDPOINT_EPHEM_RPC = "http://localhost:8899";
 const _ENDPOINT_EPHEM_WS = "ws://localhost:8900";
@@ -42,8 +43,6 @@ interface WalletAdapter {
   icon: string;
 }
 
-const testWalletPath = process.env.NEXT_PUBLIC_TEST_WALLET_PATH || '/test.json';
-
 export class MagicBlockEngine {
   private walletContext: WalletContextState;
   private sessionKey: Keypair;
@@ -59,11 +58,23 @@ export class MagicBlockEngine {
     this.sessionConfig = sessionConfig;
   }
 
+  
+
   getProgramOnChain<T extends Idl>(idl: {}): Program<T> {
-    return new Program<T>(idl as T, { connection: connectionChain });
+    const MockWallet = {
+      signTransaction: () => Promise.reject(),
+      signAllTransactions: () => Promise.reject(),
+      publicKey: Keypair.generate().publicKey,
+    }
+    return new Program<T>(idl as T, { connection: connectionChain, wallet: MockWallet });
   }
   getProgramOnEphem<T extends Idl>(idl: {}): Program<T> {
-    return new Program<T>(idl as T, { connection: connectionEphem });
+    const MockWallet = {
+      signTransaction: () => Promise.reject(),
+      signAllTransactions: () => Promise.reject(),
+      publicKey: Keypair.generate().publicKey,
+    }
+    return new Program<T>(idl as T, { connection: connectionEphem, wallet: MockWallet });
   }
 
   getConnectionChain(): Connection {

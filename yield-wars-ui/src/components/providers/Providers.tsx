@@ -60,13 +60,11 @@ export function Providers(props: PropsWithChildren<object>) {
                     <ThemeProvider>
                         <ConnectionProvider endpoint={DEFAULT_ENDPOINT}>
                             <WalletProvider wallets={wallets} autoConnect>
-                                <ProgramProvider>
                                     <PrivyProviders>
                                         <MagicBlockEngineProvider>
                                             {props.children}
                                         </MagicBlockEngineProvider>
                                     </PrivyProviders>
-                                </ProgramProvider>
                             </WalletProvider>
                         </ConnectionProvider>
                     </ThemeProvider>

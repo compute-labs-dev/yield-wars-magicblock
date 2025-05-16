@@ -22,6 +22,7 @@ import {
 } from "@/lib/constants/programIds";
 import { CurrencyType, EntityType } from '@/lib/constants/programEnums';
 import bs58 from 'bs58';
+import { setupAnchorProvider } from '@/lib/utils/anchorUtils';
 
 interface InitializeWorldResult {
     worldPda: string;
@@ -184,17 +185,18 @@ async function sendAndConfirmTransaction(
 
 export async function initializeNewWorld(): Promise<InitializeWorldResult> {
     try {
-        const ADMIN_PRIVATE_KEY_BS58 = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
-        if (!ADMIN_PRIVATE_KEY_BS58) {
+        const base58PrivateKey = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
+        if (!base58PrivateKey) {
             throw new Error('Admin private key not found in environment');
         }
 
-        const adminKeypair = Keypair.fromSecretKey(bs58.decode(ADMIN_PRIVATE_KEY_BS58));
-        
-        // Try using a more reliable RPC endpoint
+        // Try using a more reliable RPC endpoint with confirmed commitment
         const rpcEndpoint = process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com';
         console.log(`Using RPC endpoint: ${rpcEndpoint}`);
         const connection = new Connection(rpcEndpoint, "confirmed");
+
+        // Setup admin keypair and provider
+        const { provider, keypair: adminKeypair } = setupAnchorProvider(connection, base58PrivateKey);
 
         // 1. Initialize New World
         console.log("Initializing new world...");
@@ -738,7 +740,7 @@ export async function initializeNewWorld(): Promise<InitializeWorldResult> {
         };
 
     } catch (error) {
-        console.error("Error in world initialization:", error);
+        console.error('Error initializing new world:', error);
         throw error;
     }
 }

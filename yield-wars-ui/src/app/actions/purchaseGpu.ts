@@ -15,6 +15,7 @@ import {
 } from '@/lib/constants/programIds';
 import { CurrencyType, EconomyTransactionType, EntityType } from '@/lib/constants/programEnums';
 import bs58 from 'bs58';
+import { setupAnchorProvider } from '@/lib/utils/anchorUtils';
 
 // Define operation types as in the test file
 const OPERATION_TYPE = {
@@ -37,19 +38,22 @@ export interface PurchaseGpuParams {
 
 export async function purchaseGpu(params: PurchaseGpuParams) {
   try {
-    console.log("Purchase GPU Parameters:", params);
-
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
-    const ADMIN_PRIVATE_KEY_BS58 = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
+    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com', 'confirmed');
     
-    if (!ADMIN_PRIVATE_KEY_BS58) {
-      throw new Error('Admin private key (FE_CL_BS58_SIGNER_PRIVATE_KEY) not configured in environment variables.');
+    // Setup admin keypair and provider
+    const base58PrivateKey = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
+    if (!base58PrivateKey) {
+      throw new Error('Admin private key not configured in environment variables.');
     }
-
-    const adminKeypair = Keypair.fromSecretKey(bs58.decode(ADMIN_PRIVATE_KEY_BS58));
+    
+    const { provider, keypair: adminKeypair } = setupAnchorProvider(connection, base58PrivateKey);
+    
+    // Convert string parameters to PublicKey objects
     const worldPda = new PublicKey(params.worldPda);
     const gpuEntityPda = new PublicKey(params.gpuEntityPda);
     const buyerEntityPda = new PublicKey(params.buyerEntityPda);
+    const userWalletPublicKey = new PublicKey(params.userWalletPublicKey);
+    const sourcePricePda = new PublicKey(params.sourcePricePda);
 
     // Extract entity IDs from PDAs for use in ownership assignment
     // NOTE: The blockchain expects numeric entity IDs, not string PublicKeys
@@ -365,7 +369,10 @@ export async function purchaseGpu(params: PurchaseGpuParams) {
       // Don't throw here, we've already completed the transaction successfully
     }
 
-    return assignGpuSig;
+    return {
+      purchaseSig: purchaseSig,
+      assignSig: assignGpuSig
+    };
   } catch (error) {
     console.error("Error in purchaseGpu:", error);
     
