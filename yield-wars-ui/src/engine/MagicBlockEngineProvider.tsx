@@ -3,8 +3,10 @@ import { MagicBlockEngine } from "./MagicBlockEngine";
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solana';
 import { useAnchorWallet } from "@/components/providers/AnchorWalletProvider";
-import { WalletProvider, useWallet } from "@solana/wallet-adapter-react";
+import { WalletProvider, useWallet, ConnectionProvider } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
+import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
@@ -19,15 +21,23 @@ export function useMagicBlockEngine(): MagicBlockEngine {
   return React.useContext(MagicBlockEngineContext);
 }
 
+// Initialize wallet adapters
+const wallets = [
+  new PhantomWalletAdapter(),
+  new SolflareWalletAdapter(),
+];
+
 export function MagicBlockEngineProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <WalletProvider wallets={[]} autoConnect>
-      <MagicBlockEngineProviderInner>{children}</MagicBlockEngineProviderInner>
-    </WalletProvider>
+    <ConnectionProvider endpoint={DEFAULT_ENDPOINT}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <MagicBlockEngineProviderInner>{children}</MagicBlockEngineProviderInner>
+      </WalletProvider>
+    </ConnectionProvider>
   );
 }
 
@@ -42,10 +52,14 @@ function MagicBlockEngineProviderInner({
   const solanaWallets = useSolanaWallets();
   const signTransaction = useSignTransaction();
   const { anchorWallet } = useAnchorWallet();
+  const { wallet } = useWallet();
 
   // Handle client-side initialization
   React.useEffect(() => {
-    setIsClient(true);
+    if (!isClient) {
+      setIsClient(true);
+    }
+
     let key: Keypair;
     
     try {
@@ -76,11 +90,16 @@ function MagicBlockEngineProviderInner({
       key = Keypair.generate();
       setSessionKey(key);
     }
-  }, [anchorWallet]);
+  }, [isClient, anchorWallet]);
 
   const engine = React.useMemo(() => {
     if (!isClient || !sessionKey) {
       return {} as MagicBlockEngine;
+    }
+
+    // Set the ANCHOR_WALLET environment variable
+    if (typeof process !== 'undefined') {
+      process.env.ANCHOR_WALLET = sessionKey.secretKey.toString();
     }
 
     return new MagicBlockEngine(
