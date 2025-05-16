@@ -1,9 +1,10 @@
 import * as React from "react";
-import { Keypair } from "@solana/web3.js";
 import { MagicBlockEngine } from "./MagicBlockEngine";
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solana';
 import { useAnchorWallet } from "@/components/providers/AnchorWalletProvider";
+import { WalletProvider, useWallet } from "@solana/wallet-adapter-react";
+import { Keypair } from "@solana/web3.js";
 
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
@@ -24,9 +25,9 @@ export function MagicBlockEngineProvider({
   children: React.ReactNode;
 }) {
   return (
-    <MagicBlockEngineProviderInner>
-      {children}
-    </MagicBlockEngineProviderInner>
+    <WalletProvider wallets={[]} autoConnect>
+      <MagicBlockEngineProviderInner>{children}</MagicBlockEngineProviderInner>
+    </WalletProvider>
   );
 }
 
