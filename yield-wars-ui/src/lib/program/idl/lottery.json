@@ -1,29 +1,14 @@
-/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/resource_production.json`.
- */
-export type ResourceProduction = {
-  "address": "3R1a64ew4wk5MnA4Vit16twiP8UvYQ92ajXqxrP7sdBr",
+{
+  "address": "A3Cr4W7xT1QFH23CxGqMe5uYZKzSLEwT8JsjdswSRMrx",
   "metadata": {
-    "name": "resourceProduction",
-    "version": "0.2.2",
+    "name": "lottery",
+    "version": "0.2.3",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
-  "docs": [
-    "ResourceProduction system handles resource generation and collection",
-    "",
-    "This system allows entities to:",
-    "- Initialize production settings",
-    "- Collect generated resources based on time elapsed",
-    "- Activate or deactivate production",
-    "- Update production rates"
-  ],
   "instructions": [
     {
-      "name": "boltExecute",
+      "name": "bolt_execute",
       "discriminator": [
         75,
         206,
@@ -51,9 +36,6 @@ export type ResourceProduction = {
     },
     {
       "name": "execute",
-      "docs": [
-        "Main execution function for the ResourceProduction system"
-      ],
       "discriminator": [
         130,
         221,
@@ -66,10 +48,10 @@ export type ResourceProduction = {
       ],
       "accounts": [
         {
-          "name": "production"
+          "name": "lottery_prize"
         },
         {
-          "name": "wallet"
+          "name": "player_wallet"
         },
         {
           "name": "authority"
@@ -77,7 +59,7 @@ export type ResourceProduction = {
       ],
       "args": [
         {
-          "name": "args",
+          "name": "_args",
           "type": "bytes"
         }
       ],
@@ -88,20 +70,20 @@ export type ResourceProduction = {
   ],
   "accounts": [
     {
-      "name": "production",
+      "name": "LotteryPrize",
       "discriminator": [
-        141,
-        81,
-        95,
-        126,
-        26,
-        136,
-        101,
-        92
+        204,
+        231,
+        5,
+        35,
+        196,
+        194,
+        127,
+        117
       ]
     },
     {
-      "name": "wallet",
+      "name": "Wallet",
       "discriminator": [
         24,
         89,
@@ -117,33 +99,43 @@ export type ResourceProduction = {
   "errors": [
     {
       "code": 6000,
-      "name": "productionInactive",
-      "msg": "Production is currently inactive"
+      "name": "BetAmountTooLow",
+      "msg": "Bet amount too low"
     },
     {
       "code": 6001,
-      "name": "arithmeticOverflow",
-      "msg": "Arithmetic overflow in calculation"
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds to place bet"
     },
     {
       "code": 6002,
-      "name": "invalidOperation",
-      "msg": "Invalid operation type specified"
+      "name": "InvalidOperation",
+      "msg": "Invalid operation"
     },
     {
       "code": 6003,
-      "name": "invalidTimestamp",
-      "msg": "Invalid timestamp provided"
+      "name": "LotteryNotActive",
+      "msg": "Lottery is not active"
     },
     {
       "code": 6004,
-      "name": "insufficientFundsForOperating",
-      "msg": "Insufficient funds to cover operating costs"
+      "name": "NoPrizeToClaim",
+      "msg": "No prize to claim"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidWinProbability",
+      "msg": "Invalid win probability (must be between 1 and 10000)"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidMaxWinMultiplier",
+      "msg": "Invalid max win multiplier (must be greater than 0)"
     }
   ],
   "types": [
     {
-      "name": "boltMetadata",
+      "name": "BoltMetadata",
       "docs": [
         "Metadata for the component."
       ],
@@ -158,84 +150,91 @@ export type ResourceProduction = {
       }
     },
     {
-      "name": "production",
+      "name": "LotteryPrize",
       "docs": [
-        "Production component that tracks resource generation rates",
+        "LotteryPrize component that tracks lottery properties and prize information",
         "",
-        "This component is used to define the production capabilities of entities in the YieldWars game,",
-        "such as GPUs that produce USDC and AiFi tokens. It includes:",
-        "- Production rates per hour for USDC and AiFi",
-        "- Last collection timestamp to calculate uncollected resources",
-        "- Efficiency multiplier that can be affected by upgrades, data centers, or energy contracts"
+        "This component stores information about a lottery including:",
+        "- Current prize pool amount",
+        "- Minimum bet amount",
+        "- Win probability",
+        "- Recent winners and prizes"
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "usdcPerHour",
+            "name": "min_bet_amount",
             "docs": [
-              "USDC tokens produced per hour"
+              "Minimum bet amount in AiFi tokens"
             ],
             "type": "u64"
           },
           {
-            "name": "aifiPerHour",
+            "name": "win_probability",
             "docs": [
-              "AiFi tokens produced per hour"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "lastCollectionTime",
-            "docs": [
-              "Timestamp of the last resource collection (Unix timestamp)"
-            ],
-            "type": "i64"
-          },
-          {
-            "name": "efficiencyMultiplier",
-            "docs": [
-              "Efficiency multiplier applied to production rates (10000 = 100%)",
-              "This can be increased by:",
-              "- Placing GPUs in data centers",
-              "- Purchasing energy contracts",
-              "- Applying upgrades"
+              "Win probability as a percentage (10000 = 100%, 100 = 1%)"
             ],
             "type": "u32"
           },
           {
-            "name": "producerType",
+            "name": "max_win_multiplier",
             "docs": [
-              "Type of production entity (uses same enum as Ownership component)"
+              "Maximum win multiplier (10000 = 10x, 5000 = 5x)"
             ],
-            "type": "u8"
+            "type": "u32"
           },
           {
-            "name": "level",
+            "name": "last_update_time",
             "docs": [
-              "Current level of the production entity (affects base rates)"
+              "Timestamp of last lottery update"
             ],
-            "type": "u8"
+            "type": "i64"
           },
           {
-            "name": "isActive",
+            "name": "total_bets",
             "docs": [
-              "Whether production is currently active"
-            ],
-            "type": "bool"
-          },
-          {
-            "name": "operatingCost",
-            "docs": [
-              "Operating cost per hour in USDC"
+              "Total number of bets placed"
             ],
             "type": "u64"
           },
           {
-            "name": "boltMetadata",
+            "name": "total_wins",
+            "docs": [
+              "Total number of wins"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether the lottery is currently active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "recent_winners",
+            "docs": [
+              "Recent winners identified by their public key"
+            ],
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "recent_prizes",
+            "docs": [
+              "Prize amounts in AiFi tokens corresponding to recent winners"
+            ],
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "bolt_metadata",
             "type": {
               "defined": {
-                "name": "boltMetadata"
+                "name": "BoltMetadata"
               }
             }
           }
@@ -243,7 +242,7 @@ export type ResourceProduction = {
       }
     },
     {
-      "name": "wallet",
+      "name": "Wallet",
       "docs": [
         "Wallet component that tracks currency balances for the player",
         "",
@@ -259,45 +258,45 @@ export type ResourceProduction = {
         "kind": "struct",
         "fields": [
           {
-            "name": "usdcBalance",
+            "name": "usdc_balance",
             "docs": [
               "Balance of USDC (stablecoin), the base currency"
             ],
             "type": "u64"
           },
           {
-            "name": "btcBalance",
+            "name": "btc_balance",
             "docs": [
               "Balance of Bitcoin (BTC)"
             ],
             "type": "u64"
           },
           {
-            "name": "ethBalance",
+            "name": "eth_balance",
             "docs": [
               "Balance of Ethereum (ETH)"
             ],
             "type": "u64"
           },
           {
-            "name": "solBalance",
+            "name": "sol_balance",
             "docs": [
               "Balance of Solana (SOL)"
             ],
             "type": "u64"
           },
           {
-            "name": "aifiBalance",
+            "name": "aifi_balance",
             "docs": [
               "Balance of AiFi tokens"
             ],
             "type": "u64"
           },
           {
-            "name": "boltMetadata",
+            "name": "bolt_metadata",
             "type": {
               "defined": {
-                "name": "boltMetadata"
+                "name": "BoltMetadata"
               }
             }
           }
@@ -305,4 +304,4 @@ export type ResourceProduction = {
       }
     }
   ]
-};
+}

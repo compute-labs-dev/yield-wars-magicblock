@@ -41,6 +41,7 @@ import {
     setUserEntity, 
     selectUserEntity, 
     setCurrentEntity, 
+    resetUserEntities
 } from '@/stores/features/userEntityStore';
 import { RootState } from '@/stores/store';
 import { useWalletGpus } from "@/hooks/useWalletGpus";
@@ -577,9 +578,40 @@ export default function ScratchPage() {
     };
 
     const handleResetWorld = () => {
+        // First reset Redux world state
         dispatch(resetWorld());
+        
+        // Reset user entity-related state in Redux
+        dispatch(resetUserEntities());
+        dispatch(setCurrentEntity(""));
+        
+        // Reset local state variables
         setWorldPdaInit("");
-        toast.success("World state reset successfully");
+        setInitializedUserEntityPda("");
+        setTransferSourceEntity("");
+        setTransferDestEntity("");
+        setExchangeUserEntity("");
+        setLastKnownEntityPda("");
+        setPriceComponentPdas({});
+        setSelectedAsset(null);
+        
+        // Clear selected GPU if any
+        setSelectedGpu(null);
+        
+        // Force refresh owned assets
+        if (fetchOwnedAssets) {
+            fetchOwnedAssets({
+                userPublicKey: user?.wallet?.address || "",
+                worldPda: ""
+            }).catch(console.error);
+        }
+        
+        // Force refresh GPUs
+        if (fetchWalletGpus) {
+            fetchWalletGpus();
+        }
+        
+        toast.success("World state completely reset");
     };
 
     const currencyOptions = Object.keys(CurrencyType)
@@ -1140,6 +1172,14 @@ export default function ScratchPage() {
                         >
                             Reset World State
                         </Button>
+
+                        <Button 
+                            className="w-full mt-4 bg-red-500 hover:bg-red-600" 
+                            onClick={handleInitializeWorld}
+                        >
+                            Initialize World
+                        </Button>
+
                     </div>
                 )}
 

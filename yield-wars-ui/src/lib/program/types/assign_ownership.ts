@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/assign_ownership.json`.
  */
 export type AssignOwnership = {
-  "address": "H6JFAY1cibty5LtyRAP8HyQR6aXoW1RwUdPpkXtwtSsv",
+  "address": "AFiHj9n9khQjMG1U4dSoVVD7KLnVtgrcgvtfZcZHR2L3",
   "metadata": {
     "name": "assignOwnership",
     "version": "0.2.2",

@@ -2,27 +2,16 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/price_action.json`.
+ * IDL can be found at `target/idl/leaderboard.json`.
  */
-export type PriceAction = {
-  "address": "6e4kZsL68kwjW1Qagd9su8vYQPZGPyS3Mkg4n8Lt5FZU",
+export type Leaderboard = {
+  "address": "2h3bhNaWoWPX5acUWsDEiL5CwxVEBZDCYWY56ckjW1Yp",
   "metadata": {
-    "name": "priceAction",
+    "name": "leaderboard",
     "version": "0.2.2",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
-  "docs": [
-    "PriceActionSystem handles price component initialization and updates",
-    "",
-    "This system allows entities to:",
-    "- Initialize price components with proper values",
-    "- Enable price updates for components",
-    "- Update prices based on market dynamics",
-    "",
-    "All currency values use 6 decimal places, where 1,000,000 = $1.",
-    "For example, BTC at $60,000 would be stored as 60,000,000,000."
-  ],
   "instructions": [
     {
       "name": "boltExecute",
@@ -53,9 +42,6 @@ export type PriceAction = {
     },
     {
       "name": "execute",
-      "docs": [
-        "Main execution function for the PriceActionSystem"
-      ],
       "discriminator": [
         130,
         221,
@@ -68,7 +54,16 @@ export type PriceAction = {
       ],
       "accounts": [
         {
-          "name": "price"
+          "name": "wallet"
+        },
+        {
+          "name": "priceUsdc"
+        },
+        {
+          "name": "priceBtc"
+        },
+        {
+          "name": "priceAifi"
         },
         {
           "name": "authority"
@@ -98,48 +93,36 @@ export type PriceAction = {
         39,
         75
       ]
+    },
+    {
+      "name": "wallet",
+      "discriminator": [
+        24,
+        89,
+        59,
+        139,
+        81,
+        154,
+        232,
+        95
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "invalidOperationType",
-      "msg": "Invalid operation type"
+      "name": "calculationOverflow",
+      "msg": "Calculation failed due to overflow"
     },
     {
       "code": 6001,
-      "name": "initializationFailed",
-      "msg": "Price initialization failed"
+      "name": "soarSubmissionFailed",
+      "msg": "SOAR submission failed"
     },
     {
       "code": 6002,
-      "name": "enablingFailed",
-      "msg": "Price enabling failed"
-    },
-    {
-      "code": 6003,
-      "name": "updateFailed",
-      "msg": "Price update failed"
-    },
-    {
-      "code": 6004,
-      "name": "invalidCurrencyType",
-      "msg": "Invalid currency type"
-    },
-    {
-      "code": 6005,
-      "name": "priceComponentError",
-      "msg": "Price component error"
-    },
-    {
-      "code": 6006,
-      "name": "arithmeticOverflow",
-      "msg": "Arithmetic overflow in calculation"
-    },
-    {
-      "code": 6007,
-      "name": "priceUpdatesDisabled",
-      "msg": "Price updates are currently disabled"
+      "name": "invalidOperation",
+      "msg": "Invalid operation type"
     }
   ],
   "types": [
@@ -272,6 +255,68 @@ export type PriceAction = {
               "Demand factor affecting price (10000 = neutral)"
             ],
             "type": "u32"
+          },
+          {
+            "name": "boltMetadata",
+            "type": {
+              "defined": {
+                "name": "boltMetadata"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "wallet",
+      "docs": [
+        "Wallet component that tracks currency balances for the player",
+        "",
+        "This component stores the balances of different cryptocurrencies",
+        "that a player can own in the YieldWars game. It tracks:",
+        "- USDC: Base currency used for most transactions",
+        "- BTC: Bitcoin, a tradable cryptocurrency with fluctuating value",
+        "- ETH: Ethereum, a tradable cryptocurrency with fluctuating value",
+        "- SOL: Solana, a tradable cryptocurrency with fluctuating value",
+        "- AiFi: Special token produced by GPUs, used for advanced upgrades"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdcBalance",
+            "docs": [
+              "Balance of USDC (stablecoin), the base currency"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btcBalance",
+            "docs": [
+              "Balance of Bitcoin (BTC)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "ethBalance",
+            "docs": [
+              "Balance of Ethereum (ETH)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "solBalance",
+            "docs": [
+              "Balance of Solana (SOL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "aifiBalance",
+            "docs": [
+              "Balance of AiFi tokens"
+            ],
+            "type": "u64"
           },
           {
             "name": "boltMetadata",

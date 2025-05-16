@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/market.json`.
  */
 export type Market = {
-  "address": "GnXbKjiapNzMqyx1xZrrKPZurcpiemxFczwK6U3YiPHZ",
+  "address": "EE1nNQ7zsRFqnR5E6EUDjjpMMmsa1Y9NzX1ukQ2ks8WC",
   "metadata": {
     "name": "market",
     "version": "0.2.2",

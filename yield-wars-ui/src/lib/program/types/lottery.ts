@@ -2,25 +2,16 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/resource_production.json`.
+ * IDL can be found at `target/idl/lottery.json`.
  */
-export type ResourceProduction = {
-  "address": "3R1a64ew4wk5MnA4Vit16twiP8UvYQ92ajXqxrP7sdBr",
+export type Lottery = {
+  "address": "A3Cr4W7xT1QFH23CxGqMe5uYZKzSLEwT8JsjdswSRMrx",
   "metadata": {
-    "name": "resourceProduction",
-    "version": "0.2.2",
+    "name": "lottery",
+    "version": "0.2.3",
     "spec": "0.1.0",
     "description": "Created with Bolt"
   },
-  "docs": [
-    "ResourceProduction system handles resource generation and collection",
-    "",
-    "This system allows entities to:",
-    "- Initialize production settings",
-    "- Collect generated resources based on time elapsed",
-    "- Activate or deactivate production",
-    "- Update production rates"
-  ],
   "instructions": [
     {
       "name": "boltExecute",
@@ -51,9 +42,6 @@ export type ResourceProduction = {
     },
     {
       "name": "execute",
-      "docs": [
-        "Main execution function for the ResourceProduction system"
-      ],
       "discriminator": [
         130,
         221,
@@ -66,10 +54,10 @@ export type ResourceProduction = {
       ],
       "accounts": [
         {
-          "name": "production"
+          "name": "lotteryPrize"
         },
         {
-          "name": "wallet"
+          "name": "playerWallet"
         },
         {
           "name": "authority"
@@ -88,16 +76,16 @@ export type ResourceProduction = {
   ],
   "accounts": [
     {
-      "name": "production",
+      "name": "lotteryPrize",
       "discriminator": [
-        141,
-        81,
-        95,
-        126,
-        26,
-        136,
-        101,
-        92
+        204,
+        231,
+        5,
+        35,
+        196,
+        194,
+        127,
+        117
       ]
     },
     {
@@ -117,28 +105,38 @@ export type ResourceProduction = {
   "errors": [
     {
       "code": 6000,
-      "name": "productionInactive",
-      "msg": "Production is currently inactive"
+      "name": "betAmountTooLow",
+      "msg": "Bet amount too low"
     },
     {
       "code": 6001,
-      "name": "arithmeticOverflow",
-      "msg": "Arithmetic overflow in calculation"
+      "name": "insufficientFunds",
+      "msg": "Insufficient funds to place bet"
     },
     {
       "code": 6002,
       "name": "invalidOperation",
-      "msg": "Invalid operation type specified"
+      "msg": "Invalid operation"
     },
     {
       "code": 6003,
-      "name": "invalidTimestamp",
-      "msg": "Invalid timestamp provided"
+      "name": "lotteryNotActive",
+      "msg": "Lottery is not active"
     },
     {
       "code": 6004,
-      "name": "insufficientFundsForOperating",
-      "msg": "Insufficient funds to cover operating costs"
+      "name": "noPrizeToClaim",
+      "msg": "No prize to claim"
+    },
+    {
+      "code": 6005,
+      "name": "invalidWinProbability",
+      "msg": "Invalid win probability (must be between 1 and 10000)"
+    },
+    {
+      "code": 6006,
+      "name": "invalidMaxWinMultiplier",
+      "msg": "Invalid max win multiplier (must be greater than 0)"
     }
   ],
   "types": [
@@ -158,78 +156,85 @@ export type ResourceProduction = {
       }
     },
     {
-      "name": "production",
+      "name": "lotteryPrize",
       "docs": [
-        "Production component that tracks resource generation rates",
+        "LotteryPrize component that tracks lottery properties and prize information",
         "",
-        "This component is used to define the production capabilities of entities in the YieldWars game,",
-        "such as GPUs that produce USDC and AiFi tokens. It includes:",
-        "- Production rates per hour for USDC and AiFi",
-        "- Last collection timestamp to calculate uncollected resources",
-        "- Efficiency multiplier that can be affected by upgrades, data centers, or energy contracts"
+        "This component stores information about a lottery including:",
+        "- Current prize pool amount",
+        "- Minimum bet amount",
+        "- Win probability",
+        "- Recent winners and prizes"
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "usdcPerHour",
+            "name": "minBetAmount",
             "docs": [
-              "USDC tokens produced per hour"
+              "Minimum bet amount in AiFi tokens"
             ],
             "type": "u64"
           },
           {
-            "name": "aifiPerHour",
+            "name": "winProbability",
             "docs": [
-              "AiFi tokens produced per hour"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "lastCollectionTime",
-            "docs": [
-              "Timestamp of the last resource collection (Unix timestamp)"
-            ],
-            "type": "i64"
-          },
-          {
-            "name": "efficiencyMultiplier",
-            "docs": [
-              "Efficiency multiplier applied to production rates (10000 = 100%)",
-              "This can be increased by:",
-              "- Placing GPUs in data centers",
-              "- Purchasing energy contracts",
-              "- Applying upgrades"
+              "Win probability as a percentage (10000 = 100%, 100 = 1%)"
             ],
             "type": "u32"
           },
           {
-            "name": "producerType",
+            "name": "maxWinMultiplier",
             "docs": [
-              "Type of production entity (uses same enum as Ownership component)"
+              "Maximum win multiplier (10000 = 10x, 5000 = 5x)"
             ],
-            "type": "u8"
+            "type": "u32"
           },
           {
-            "name": "level",
+            "name": "lastUpdateTime",
             "docs": [
-              "Current level of the production entity (affects base rates)"
+              "Timestamp of last lottery update"
             ],
-            "type": "u8"
+            "type": "i64"
+          },
+          {
+            "name": "totalBets",
+            "docs": [
+              "Total number of bets placed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalWins",
+            "docs": [
+              "Total number of wins"
+            ],
+            "type": "u64"
           },
           {
             "name": "isActive",
             "docs": [
-              "Whether production is currently active"
+              "Whether the lottery is currently active"
             ],
             "type": "bool"
           },
           {
-            "name": "operatingCost",
+            "name": "recentWinners",
             "docs": [
-              "Operating cost per hour in USDC"
+              "Recent winners identified by their public key"
             ],
-            "type": "u64"
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "recentPrizes",
+            "docs": [
+              "Prize amounts in AiFi tokens corresponding to recent winners"
+            ],
+            "type": {
+              "vec": "u64"
+            }
           },
           {
             "name": "boltMetadata",

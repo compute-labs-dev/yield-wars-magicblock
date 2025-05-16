@@ -62,8 +62,13 @@ const worldSlice = createSlice({
             state.isInitialized = action.payload;
             state.lastInitializedAt = Date.now();
         },
-        resetWorld: () => {
-            return initialState;
+        resetWorld: (state) => {
+            state.worldPda = null;
+            state.gpuEntities = [];
+            state.currencyEntities = [];
+            state.isInitialized = false;
+            state.lastInitializedAt = null;
+            state.cachedGpus = [];
         },
         setCachedGpus: (state, action: PayloadAction<EnhancedGpuOwnership[]>) => {
             state.cachedGpus = action.payload;
