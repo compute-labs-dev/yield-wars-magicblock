@@ -226,6 +226,54 @@ registerCommand({
     }
 });
 
+// Add marketplace command
+registerCommand({
+    name: 'marketplace',
+    type: 'dynamic',
+    description: 'Navigate to the marketplace page',
+    category: 'system',
+    execute: async () => {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/marketplace';
+            return 'Navigating to marketplace...';
+        } else {
+            return 'Error: Cannot navigate in this environment.';
+        }
+    }
+});
+
+// Add store command
+registerCommand({
+    name: 'store',
+    type: 'dynamic',
+    description: 'Navigate to the store page',
+    category: 'system',
+    execute: async () => {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/supply-shack?tab=store';
+            return 'Navigating to store...';
+        } else {
+            return 'Error: Cannot navigate in this environment.';
+        }
+    }
+});
+
+// Add inventory command
+registerCommand({
+    name: 'inventory',
+    type: 'dynamic',
+    description: 'Navigate to the inventory page',
+    category: 'system',
+    execute: async () => {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/supply-shack?tab=inventory';
+            return 'Navigating to inventory...';
+        } else {
+            return 'Error: Cannot navigate in this environment.';
+        }
+    }
+});
+
 // System Commands
 registerCommand({
     name: 'help',
@@ -263,6 +311,11 @@ registerCommand({
   yield               Check yields
   gnft list          List GNFTs
   comp info          Show COMP info
+
+[NAVIGATION]
+  marketplace         Go to marketplace
+  store              Go to supply store
+  inventory          Go to inventory
 
 [SOCIAL]
   refer               Get referral link
@@ -399,6 +452,15 @@ function getCommandHelp(command: string): string {
             break;
         case 'logout':
             help += '\n    logout         Log out of current session';
+            break;
+        case 'marketplace':
+            help += '\n    marketplace    Navigate to marketplace';
+            break;
+        case 'store':
+            help += '\n    store          Navigate to supply store';
+            break;
+        case 'inventory':
+            help += '\n    inventory      Navigate to inventory';
             break;
         default:
             if (!cmd.parameters || cmd.parameters.length === 0) {

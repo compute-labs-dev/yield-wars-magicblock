@@ -24,6 +24,12 @@ import { Button } from "@/components/ui/Button";
 import * as constants from '@/lib/consts';
 import { toast } from "sonner";
 import type { RootState } from "@/stores/store";
+import { setInitialLoad } from "@/stores/features/uiSlice";
+import { setTerminalVisible } from "@/stores/features/uiSlice";
+import { setTerminalHeight } from "@/stores/features/uiSlice";
+import { closeTerminal } from "@/stores/features/uiSlice";
+import ShowTerminalButton from "@/components/terminals/ShowTerminalButton";
+import PrimaryTerminal from "@/components/terminals/PrimaryTerminal";
 
 // Create a separate client component for the content
 function SupplyShackContent() {
@@ -34,6 +40,34 @@ function SupplyShackContent() {
     const [activeTab, setActiveTab] = useState<"store" | "inventory">(
         tabParam === "inventory" ? "inventory" : "store"
     );
+
+    const isInitialLoad = useSelector((state: RootState) => state.ui.isInitialLoad);
+    const isTerminalVisible = useSelector((state: RootState) => state.ui.isTerminalVisible);
+    const terminalHeight = useSelector((state: RootState) => state.ui.terminalHeight);
+    const wasClosedByUser = useSelector((state: RootState) => state.ui.wasClosedByUser);
+
+    const initialEntries = [
+        { type: 'output' as const, content: 'Welcome to the GPU Supply Shack! Here you can purchase and manage your GPUs.' }
+    ];
+
+    const handlePrimaryTerminalClose = () => {
+        dispatch(closeTerminal());
+    };
+
+    const handlePrimaryTerminalHeightChange = (newHeight: string) => {
+        dispatch(setTerminalHeight(newHeight));
+    };
+    
+    const handleShowTerminalClick = () => {
+        dispatch(setTerminalVisible(true));
+        if (isInitialLoad) { 
+            dispatch(setInitialLoad(false));
+        }
+    };
+
+    useEffect(() => {
+        dispatch(setTerminalVisible(false));
+    }, []);
 
     // Handle tab changes
     const handleTabChange = (tab: "store" | "inventory") => {
@@ -230,6 +264,33 @@ function SupplyShackContent() {
                 ) : (
                     <div className="text-center text-gray-400 py-8">
                         Please initialize your wallet to access the Supply Shack
+                    </div>
+                )}
+            </div>
+
+            {/* Terminal Layer - Adjusted for mobile */}
+            <div className="fixed inset-0 pointer-events-none z-[9999]">
+                {isTerminalVisible && (
+                    <div className="absolute bottom-8 left-0 right-0 pointer-events-auto max-h-[60vh] sm:max-h-[70vh]" style={{ height: terminalHeight }}>
+                    <PrimaryTerminal 
+                        initialEntries={initialEntries}
+                        appearDelay={0}
+                        isVisible={isTerminalVisible}
+                        isInitialLoad={isInitialLoad}
+                        height={terminalHeight}
+                        onHeightChange={handlePrimaryTerminalHeightChange}
+                        onClose={handlePrimaryTerminalClose}
+                    />
+                    </div>
+                )}
+
+                {!isTerminalVisible && (
+                    <div className="pointer-events-auto">
+                    <ShowTerminalButton 
+                        onClick={handleShowTerminalClick}
+                        appearDelay={0}
+                        bypassDelay={wasClosedByUser}
+                    />
                     </div>
                 )}
             </div>
