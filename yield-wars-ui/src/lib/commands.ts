@@ -19,7 +19,7 @@ import {
 // Import necessary functions from actions
 import { fetchWalletBalance } from '@/app/actions/fetchWalletBalance';
 import { getWalletGpus } from '@/app/actions/getWalletGpus';
-import { exchangeCurrency } from '@/app/actions/exchangeCurrency';
+// Removed: import { exchangeCurrency } from '@/app/actions/exchangeCurrency';
 import { purchaseGpu } from '@/app/actions/purchaseGpu';
 import { CurrencyType } from '@/lib/constants/programEnums';
 import * as constants from '@/lib/consts';
@@ -788,17 +788,31 @@ registerCommand({
                 destination_currency_type: currencyTypeMap[destination],
                 amount: rawAmount,
                 userWalletPublicKey: context.user.wallet.address,
-                privySigner: context.user.wallet.address,
                 sourcePricePda,
                 destinationPricePda,
                 sourceCurrencyEntityPda: sourceCurrencyEntity.entityPda,
                 destinationCurrencyEntityPda: destinationCurrencyEntity.entityPda
             };
             
-            // Execute the exchange
+            // Execute the exchange via API route instead of directly calling the server action
             let response = `Processing exchange...\n\n`;
             
-            const signature = await exchangeCurrency(exchangeParams);
+            // Call the API endpoint using fetch
+            const apiResponse = await fetch('/api/exchange', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(exchangeParams),
+            });
+            
+            const result = await apiResponse.json();
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Exchange failed');
+            }
+            
+            const signature = result.signature;
             
             response += `Exchange completed successfully!\n`;
             response += `Transaction signature: ${signature.slice(0, 8)}...\n\n`;
