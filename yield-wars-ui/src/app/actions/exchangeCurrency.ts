@@ -13,6 +13,7 @@ import {
   COMPONENT_PRICE_PROGRAM_ID,
 } from '@/lib/constants/programIds';
 import { CurrencyType } from '@/lib/constants/programEnums';
+import { setupAnchorProvider } from '@/lib/utils/anchorUtils';
 
 export interface ExchangeCurrencyParams {
   worldPda: string;
@@ -43,7 +44,15 @@ export async function exchangeCurrency(params: ExchangeCurrencyParams) {
       amount: params.amount
     });
 
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
+    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com', 'confirmed');
+
+    // Setup admin keypair and provider
+    const base58PrivateKey = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
+    if (!base58PrivateKey) {
+      throw new Error('Admin private key not configured in environment variables.');
+    }
+    
+    const { provider, keypair: adminKeypair } = setupAnchorProvider(connection, base58PrivateKey);
 
     // Create PublicKey instances
     const worldPda = new PublicKey(params.worldPda);

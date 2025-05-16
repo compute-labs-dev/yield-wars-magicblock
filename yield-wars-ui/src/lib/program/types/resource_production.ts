@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/resource_production.json`.
  */
 export type ResourceProduction = {
-  "address": "3Erv5Y7amyL9MNGy83HAVaQaAohQZF9qC6faHrcE58Ez",
+  "address": "xBKQ5hcARm4juwVJLoNbE6G4acc9buzHyBPSppvU8Au",
   "metadata": {
     "name": "resourceProduction",
     "version": "0.2.2",

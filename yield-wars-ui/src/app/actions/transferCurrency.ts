@@ -13,6 +13,7 @@ import {
   COMPONENT_PRICE_PROGRAM_ID
 } from '@/lib/constants/programIds';
 import { CurrencyType } from '@/lib/constants/programEnums';
+import { setupAnchorProvider } from '@/lib/utils/anchorUtils';
 
 export interface TransferCurrencyParams {
   worldPda: string;
@@ -26,8 +27,16 @@ export interface TransferCurrencyParams {
 
 export async function transferCurrency(params: TransferCurrencyParams) {
   try {
-    // Create connection
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com');
+    // Create connection with confirmed commitment
+    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com', 'confirmed');
+
+    // Setup admin keypair and provider
+    const base58PrivateKey = process.env.FE_CL_BS58_SIGNER_PRIVATE_KEY;
+    if (!base58PrivateKey) {
+      throw new Error('Admin private key not configured in environment variables.');
+    }
+    
+    const { provider, keypair: adminKeypair } = setupAnchorProvider(connection, base58PrivateKey);
 
     // Convert string public keys to PublicKey objects
     const privySigner = new PublicKey(params.privySigner);
@@ -82,7 +91,7 @@ export async function transferCurrency(params: TransferCurrencyParams) {
     };
 
   } catch (error) {
-    console.error('Transfer failed:', error);
+    console.error('Error in transferCurrency:', error);
     throw error;
   }
 } 

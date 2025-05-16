@@ -16,7 +16,9 @@ interface OwnershipData {
   type: 'Ownership';
   data: {
     ownerType: number;
-    ownedEntities: string;
+    ownerEntity?: string;
+    ownedEntities: string[];
+    ownedEntityTypes: number[];
   };
 }
 
@@ -116,18 +118,28 @@ export async function decodeAccountData(
       // Ownership component
       case '4M5dU6my7BmVMoAUYmRa3ZnJRMMQzW7e4Yf32wiPh9wS':
         try {
-          // Use SDK if possible, or extract key fields
+          console.log('Decoding ownership component...');
+          const decoded = decodeBoltComponent(accountInfo.data, programId);
+          console.log('Raw decoded ownership data:', decoded);
+
+          if (!decoded) {
+            throw new Error('Failed to decode ownership data - null result');
+          }
+
+          // Even if ownedEntities is empty, we should still return a valid ownership structure
           return {
             type: 'Ownership',
             data: {
-              ownerType: accountInfo.data[8],
-              // Owned entities array would need proper parsing of pubkey array
-              ownedEntities: 'Array of pubkeys - requires additional parsing',
+              ownerType: decoded.data.ownerType ?? 0,
+              ownerEntity: decoded.data.ownerEntity?.toBase58(),
+              ownedEntities: (decoded.data.ownedEntities || []).map(e => e.toBase58()),
+              ownedEntityTypes: decoded.data.ownedEntityTypes || []
             }
           };
         } catch (err) {
           console.error('Error decoding Ownership component:', err);
-          return decodeBoltComponent(accountInfo.data, programId);
+          // Don't fall back to basic decoder since we want to preserve the error
+          throw err;
         }
         
       // Price component

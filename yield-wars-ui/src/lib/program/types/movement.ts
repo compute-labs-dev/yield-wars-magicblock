@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/movement.json`.
  */
 export type Movement = {
-  "address": "H4z5teSN2Lc4hNyFcTdmWb8EBxyRXUqtBRNV2jdqxFUo",
+  "address": "2J6tfKEiXrPsUXAjK5M4d1r6iYgfwh273v7gx4SUM5pW",
   "metadata": {
     "name": "movement",
     "version": "0.2.2",

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/production.json`.
  */
 export type Production = {
-  "address": "ET9h3CitgureNw7GRGTCG4hDKGTxtE1kYmPwDB6Xb1ar",
+  "address": "DswkbwXDBgmnHyMqwbSDWnW94VNwsyqcKadbzF8FDpkX",
   "metadata": {
     "name": "production",
     "version": "0.2.2",
