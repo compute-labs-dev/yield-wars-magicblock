@@ -2,7 +2,6 @@
 
 import { PropsWithChildren } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SolanaProvider } from '@/components/providers/SolanaProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import PrivyProviders from './PrivyProvider';
 import { MagicBlockEngineProvider } from '@/engine/MagicBlockEngineProvider';
@@ -10,11 +9,17 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from '@/stores/store';
 import { useState, useEffect } from 'react';
-import { AnchorWalletProvider } from './AnchorWalletProvider';
-import { ConnectionProvider } from '@solana/wallet-adapter-react';
-import { Keypair } from '@solana/web3.js';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { ProgramProvider } from './ProgramProvider';
 
 const DEFAULT_ENDPOINT = process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.devnet.solana.com";
+
+// Initialize wallet adapters
+const wallets = [
+  new PhantomWalletAdapter(),
+  new SolflareWalletAdapter(),
+];
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,11 +35,6 @@ export function Providers(props: PropsWithChildren<object>) {
     
     useEffect(() => {
         setIsClient(true);
-        // Set ANCHOR_WALLET in localStorage if it doesn't exist
-        if (typeof window !== 'undefined' && !localStorage.getItem('ANCHOR_WALLET')) {
-            const wallet = Keypair.generate();
-            localStorage.setItem('ANCHOR_WALLET', JSON.stringify(Array.from(wallet.secretKey)));
-        }
     }, []);
 
     // Base providers that don't need client-side checks
@@ -59,15 +59,15 @@ export function Providers(props: PropsWithChildren<object>) {
                 <PersistGate loading={null} persistor={persistor}>
                     <ThemeProvider>
                         <ConnectionProvider endpoint={DEFAULT_ENDPOINT}>
-                            <PrivyProviders>
-                                <SolanaProvider>
-                                    <AnchorWalletProvider>
+                            <WalletProvider wallets={wallets} autoConnect>
+                                <ProgramProvider>
+                                    <PrivyProviders>
                                         <MagicBlockEngineProvider>
                                             {props.children}
                                         </MagicBlockEngineProvider>
-                                    </AnchorWalletProvider>
-                                </SolanaProvider>
-                            </PrivyProviders>
+                                    </PrivyProviders>
+                                </ProgramProvider>
+                            </WalletProvider>
                         </ConnectionProvider>
                     </ThemeProvider>
                 </PersistGate>

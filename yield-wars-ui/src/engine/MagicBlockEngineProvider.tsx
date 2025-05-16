@@ -2,16 +2,13 @@ import * as React from "react";
 import { MagicBlockEngine } from "./MagicBlockEngine";
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallets, useSignTransaction } from '@privy-io/react-auth/solana';
-import { useAnchorWallet } from "@/components/providers/AnchorWalletProvider";
-import { WalletProvider, useWallet, ConnectionProvider } from "@solana/wallet-adapter-react";
+import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
-import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
+import { useProgram } from "@/components/providers/ProgramProvider";
 
 const SESSION_LOCAL_STORAGE = "magicblock-session-key";
 const SESSION_MIN_LAMPORTS = 0.02 * 1_000_000_000;
 const SESSION_MAX_LAMPORTS = 0.05 * 1_000_000_000;
-const DEFAULT_ENDPOINT = process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.devnet.solana.com";
 
 const MagicBlockEngineContext = React.createContext<MagicBlockEngine>(
   {} as MagicBlockEngine
@@ -21,27 +18,7 @@ export function useMagicBlockEngine(): MagicBlockEngine {
   return React.useContext(MagicBlockEngineContext);
 }
 
-// Initialize wallet adapters
-const wallets = [
-  new PhantomWalletAdapter(),
-  new SolflareWalletAdapter(),
-];
-
 export function MagicBlockEngineProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <ConnectionProvider endpoint={DEFAULT_ENDPOINT}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <MagicBlockEngineProviderInner>{children}</MagicBlockEngineProviderInner>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
-}
-
-function MagicBlockEngineProviderInner({
   children,
 }: {
   children: React.ReactNode;
@@ -51,8 +28,9 @@ function MagicBlockEngineProviderInner({
   const privy = usePrivy();
   const solanaWallets = useSolanaWallets();
   const signTransaction = useSignTransaction();
-  const { anchorWallet } = useAnchorWallet();
-  const { wallet } = useWallet();
+  const anchorWallet = useAnchorWallet();
+  const { connection } = useConnection();
+  const { program } = useProgram();
 
   // Handle client-side initialization
   React.useEffect(() => {
@@ -93,13 +71,8 @@ function MagicBlockEngineProviderInner({
   }, [isClient, anchorWallet]);
 
   const engine = React.useMemo(() => {
-    if (!isClient || !sessionKey) {
+    if (!isClient || !sessionKey || !connection) {
       return {} as MagicBlockEngine;
-    }
-
-    // Set the ANCHOR_WALLET environment variable
-    if (typeof process !== 'undefined') {
-      process.env.ANCHOR_WALLET = sessionKey.secretKey.toString();
     }
 
     return new MagicBlockEngine(
@@ -111,9 +84,9 @@ function MagicBlockEngineProviderInner({
         minLamports: SESSION_MIN_LAMPORTS,
         maxLamports: SESSION_MAX_LAMPORTS,
       },
-      DEFAULT_ENDPOINT
+      connection.rpcEndpoint
     );
-  }, [isClient, sessionKey, privy, solanaWallets, signTransaction]);
+  }, [isClient, sessionKey, privy, solanaWallets, signTransaction, connection]);
 
   if (!isClient || !sessionKey) {
     return null;
