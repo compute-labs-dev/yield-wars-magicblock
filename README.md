@@ -657,4 +657,4 @@ YieldWars is currently in active development. The backend systems are largely im
 
 ---
 
-Built for the MagicBlock Real-Time Hackathon 2023 | [Learn More](https://docs.magicblock.gg)
+Built for the MagicBlock Real-Time Hackathon 2025 | [Learn More](https://docs.magicblock.gg)
