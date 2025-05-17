@@ -1,10 +1,10 @@
-# YieldWars: A Real-Time Crypto Mining Simulation Game
+# YieldWars: A Real-Time GPU Investment Simulation Game
 
 ![YieldWars Logo](./yield-wars-ui/public/yield-wars-logo.svg)
 
 ## 🚀 Project Overview
 
-YieldWars is a real-time cryptocurrency mining simulation game built on Solana using MagicBlock's Ephemeral Rollup technology. Players manage virtual resources including cryptocurrencies and mining hardware, focusing on strategic decision-making and resource optimization to maximize returns.
+YieldWars is a real-time cryptocurrency mining simulation game built on Solana using MagicBlock's Ephemeral Rollup technology. Players manage virtual resources including cryptocurrencies and gpu hardware, focusing on strategic decision-making and resource optimization to maximize returns.
 
 Created for the MagicBlock Real-Time Hackathon, YieldWars demonstrates the capabilities of real-time, high-performance on-chain gaming using Solana's infrastructure accelerated by MagicBlock's engine.
 
